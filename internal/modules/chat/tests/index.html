@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Simple Chat</title>
+</head>
+<body>
+    <h1>WebSocket Chat</h1>
+    <textarea id="messages" readonly></textarea><br/>
+    <input id="messageInput" type="text" placeholder="Type a message...">
+    <button id="sendButton">Send</button>
+
+    <script>
+        // Connect to the WebSocket server
+        const socket = new WebSocket("ws://localhost:8080/chat");
+
+        // Handle incoming messages
+        socket.onmessage = function(event) {
+            const messages = document.getElementById("messages");
+            messages.value += `\n${event.data}`; // Append received message
+        };
+
+        // Send message when the user clicks the send button
+        document.getElementById("sendButton").onclick = function() {
+            const message = document.getElementById("messageInput").value;
+            socket.send(message);  // Send the message to the server
+            document.getElementById("messageInput").value = ""; // Clear the input field
+        };
+    </script>
+</body>
+</html>
