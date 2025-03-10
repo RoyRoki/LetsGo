@@ -1,0 +1,24 @@
+version: '3'
+services:
+  myapp:
+    build: .
+    ports:
+      - "8080:8080"
+    depends_on:
+      - redis
+    environment:
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+    networks:
+      - letsgo-network
+
+  redis:
+    image: redis:alpine
+    ports:
+      - "6379:6379"
+    networks:
+      - letsgo-network
+
+networks:
+  letsgo-network:
+    driver: bridge
