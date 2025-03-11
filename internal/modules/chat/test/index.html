@@ -17,13 +17,31 @@
         socket.onmessage = function(event) {
             const messages = document.getElementById("messages");
             messages.value += `\n${event.data}`; // Append received message
+            
+            // Scroll to the bottom of the textarea
+            messages.scrollTop = messages.scrollHeight;
         };
 
         // Send message when the user clicks the send button
         document.getElementById("sendButton").onclick = function() {
             const message = document.getElementById("messageInput").value;
-            socket.send(message);  // Send the message to the server
-            document.getElementById("messageInput").value = ""; // Clear the input field
+            if (message) {
+                socket.send(message);  // Send the message to the server
+                document.getElementById("messageInput").value = ""; // Clear the input field
+            }
+        };
+
+        // Optional: Handle WebSocket open, close, or error events
+        socket.onopen = function() {
+            console.log("WebSocket connected");
+        };
+
+        socket.onerror = function(error) {
+            console.error("WebSocket Error:", error);
+        };
+
+        socket.onclose = function() {
+            console.log("WebSocket connection closed");
         };
     </script>
 </body>

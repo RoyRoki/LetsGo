@@ -9,3 +9,11 @@ type Config interface {
 	GetInt(key string) int   // Retrieves an integer value for the given key
 	GetBool(key string) bool // Retrieves a boolean value for the given key
 }
+
+// DBConfig defines the contract for database configuration.
+type DBConfig interface {
+	GetDBAddress() string
+	GetDBPassword() string
+	GetDBPort() int
+	Ping() error
+}

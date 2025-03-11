@@ -17,6 +17,8 @@ type EnvConfig struct {
 	RedisAddress  string
 	RedisPassword string
 	RedisDB       int
+	RedisPort     int
+	LoggerType    string
 }
 
 // NewEnvConfig creates a new EnvConfig instance and loads environment variables.
@@ -54,12 +56,15 @@ func (c *EnvConfig) LoadEnv() error {
 
 	// Load Redis configurations
 	c.RedisAddress = os.Getenv(constants.RedisAddressEnv)
-	if c.RedisAddress == "" {
-		log.Fatal("REDIS_ADDRESS environment variable is not set")
-	}
-
 	c.RedisPassword = os.Getenv(constants.RedisPasswordEnv)
+	if c.RedisPassword == "" {
+		log.Println("No Redis password set, connecting without password")
+	}
 	c.RedisDB = c.GetInt(constants.RedisDBEnv)
+	c.RedisPort = c.GetInt(constants.RedisPortEnv)
+
+	// Load Logger Type
+	c.LoggerType = c.Get(constants.LoggerTypeEnv)
 
 	return nil
 }
