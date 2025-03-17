@@ -3,57 +3,118 @@ package datasource
 import (
 	"context"
 	"encoding/json"
+	"fmt"
+	"log"
 
-	"github.com/go-redis/redis/v8"
+	"github.com/redis/go-redis/v9"
 	"github.com/royroki/LetsGo/internal/modules/chat/domain/entity"
 	"github.com/royroki/LetsGo/internal/modules/chat/domain/repository"
 )
 
+// RedisChatRepository handles chat session storage in Redis
 type RedisChatRepository struct {
 	client *redis.Client
 }
 
+// NewRedisChatRepository initializes a new RedisChatRepository
 func NewRedisChatRepository(client *redis.Client) repository.ChatRepository {
 	return &RedisChatRepository{client: client}
 }
 
-func (r *RedisChatRepository) CreateChat(chat *entity.Chat) error {
-	// Convert the chat object to JSON
+// SaveChatSession stores a chat session in Redis
+func (r *RedisChatRepository) SaveChatSession(ctx context.Context, chat *entity.Chat) error {
+	chatKey := fmt.Sprintf("chat:%s", chat.ID)
+
+	// Convert chat struct to JSON
 	chatData, err := json.Marshal(chat)
 	if err != nil {
+		log.Printf("Error marshalling chat data: %v", err)
 		return err
 	}
 
-	// Save the chat in Redis (use the chat ID as the key)
-	err = r.client.Set(context.Background(), chat.ID, chatData, 0).Err()
-	return err
-}
+	_, err = r.client.HSet(ctx, chatKey, map[string]interface{}{
+		"userA":     chat.UserA.UserID,
+		"userB":     chat.UserB.UserID,
+		"startTime": chat.StartTime.Unix(),
+		"endTime":   0, // 0 means chat is ongoing
+		"data":      string(chatData),
+	}).Result()
 
-func (r *RedisChatRepository) GetChat(id string) (*entity.Chat, error) {
-	chatData, err := r.client.Get(context.Background(), id).Result()
 	if err != nil {
-		return nil, err
+		log.Printf("Error storing chat session: %v", err)
+		return err
 	}
 
+	// Store chat ID references for users
+	r.client.Set(ctx, fmt.Sprintf("chat:%s", chat.UserA.UserID), chat.ID, 0)
+	r.client.Set(ctx, fmt.Sprintf("chat:%s", chat.UserB.UserID), chat.ID, 0)
+
+	log.Printf("Chat session started: %s <-> %s", chat.UserA.UserID, chat.UserB.UserID)
+	return nil
+}
+
+// GetChatSession retrieves a chat session from Redis
+func (r *RedisChatRepository) GetChatSession(ctx context.Context, chatID string) (*entity.Chat, error) {
+	chatKey := fmt.Sprintf("chat:%s", chatID)
+
+	// Retrieve chat data from Redis
+	data, err := r.client.HGetAll(ctx, chatKey).Result()
+	if err != nil || len(data) == 0 {
+		return nil, fmt.Errorf("chat session not found: %s", chatID)
+	}
+
+	// Convert JSON back to struct
 	var chat entity.Chat
-	err = json.Unmarshal([]byte(chatData), &chat)
+	err = json.Unmarshal([]byte(data["data"]), &chat)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("error decoding chat session: %v", err)
 	}
 
 	return &chat, nil
 }
 
-func (r *RedisChatRepository) UpdateChat(chat *entity.Chat) error {
-	chatData, err := json.Marshal(chat)
+// GetChatPartner retrieves the chat partner for a user
+func (r *RedisChatRepository) GetChatPartner(ctx context.Context, userID string) (*entity.User, error) {
+	// Get the chat session ID for the user
+	chatID, err := r.client.Get(ctx, fmt.Sprintf("chat:%s", userID)).Result()
+	if err != nil {
+		return nil, fmt.Errorf("no active chat found for user: %s", userID)
+	}
+
+	// Retrieve the chat session
+	chat, err := r.GetChatSession(ctx, chatID)
+	if err != nil {
+		return nil, err
+	}
+
+	// Return the chat partner
+	if chat.UserA.UserID == userID {
+		return &chat.UserB, nil
+	}
+	return &chat.UserA, nil
+}
+
+// DeleteChatSession removes a chat session from Redis
+func (r *RedisChatRepository) DeleteChatSession(ctx context.Context, chatID string) error {
+	chatKey := fmt.Sprintf("chat:%s", chatID)
+
+	// Retrieve chat before deletion to remove user mappings
+	chat, err := r.GetChatSession(ctx, chatID)
 	if err != nil {
 		return err
 	}
 
-	err = r.client.Set(context.Background(), chat.ID, chatData, 0).Err()
-	return err
-}
+	// Delete user-chat mappings
+	r.client.Del(ctx, fmt.Sprintf("chat:%s", chat.UserA.UserID))
+	r.client.Del(ctx, fmt.Sprintf("chat:%s", chat.UserB.UserID))
 
-func (r *RedisChatRepository) DeleteChat(id string) error {
-	return r.client.Del(context.Background(), id).Err()
+	// Delete chat session
+	err = r.client.Del(ctx, chatKey).Err()
+	if err != nil {
+		log.Printf("Error deleting chat session: %v", err)
+		return err
+	}
+
+	log.Printf("Chat session deleted: %s", chatID)
+	return nil
 }

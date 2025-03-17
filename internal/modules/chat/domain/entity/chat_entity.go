@@ -1,10 +1,12 @@
 package entity
 
+import "time"
+
+// Chat represents a conversation session between two users
 type Chat struct {
-	ID           string // Unique identifier for the chat session
-	Participant1 string // User 1 in the chat
-	Participant2 string // User 2 in the chat
-	Status       string // Active, Ended, etc.
-	StartTime    int64  // Timestamp when the chat started
-	EndTime      int64  // Timestamp when the chat ended
+	ID        string     `json:"id"`
+	UserA     User       `json:"user_a"`
+	UserB     User       `json:"user_b"`
+	StartTime time.Time  `json:"start_time"`
+	EndTime   *time.Time `json:"end_time,omitempty"` // Pointer to handle ongoing chats (nil if active)
 }

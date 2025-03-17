@@ -1,105 +1,77 @@
 package websocket
 
 import (
-	"fmt"
+	"context"
 	"log"
 	"net/http"
 
-	"github.com/google/uuid"
 	"github.com/gorilla/websocket"
-	"github.com/royroki/LetsGo/internal/modules/chat/infrastructure/waitingqueue"
+	"github.com/royroki/LetsGo/internal/modules/chat/application/usecase"
 )
 
-// WebSocketHub holds all active WebSocket connections for paired users.
+// WebSocketHub manages active WebSocket connections.
 type WebSocketHub struct {
-	clients map[string]*websocket.Conn // Stores user connections by userID
-	queue   *waitingqueue.WaitingQueue // Waiting queue for unpaired users
+	useCase  *usecase.ChatUseCase
+	upgrader websocket.Upgrader
 }
 
-// NewWebSocketHub initializes a new WebSocketHub.
-func NewWebSocketHub(wq *waitingqueue.WaitingQueue) *WebSocketHub {
+// NewWebSocketHub initializes WebSocketHub with the chat use case.
+func NewWebSocketHub(useCase *usecase.ChatUseCase) *WebSocketHub {
 	return &WebSocketHub{
-		clients: make(map[string]*websocket.Conn),
-		queue:   wq,
+		useCase: useCase,
+		upgrader: websocket.Upgrader{
+			ReadBufferSize:  1024,
+			WriteBufferSize: 1024,
+			CheckOrigin:     func(r *http.Request) bool { return true },
+		},
 	}
 }
 
-// HandleWebSocket manages WebSocket connections, pairing users, and messaging.
-func (hub *WebSocketHub) HandleWebSocket(w http.ResponseWriter, r *http.Request) {
-	upgrader := websocket.Upgrader{
-		CheckOrigin: func(r *http.Request) bool { return true }, // Allow all origins
-	}
-
-	// Upgrade the HTTP connection to a WebSocket connection
-	conn, err := upgrader.Upgrade(w, r, nil)
+// HandleWSConnection upgrades the HTTP request to WebSocket and handles the connection lifecycle.
+func (hub *WebSocketHub) HandleWSConnection(w http.ResponseWriter, r *http.Request) {
+	conn, err := hub.upgrader.Upgrade(w, r, nil)
 	if err != nil {
-		log.Println("Error upgrading WebSocket:", err)
-		return
-	}
-	defer conn.Close()
-
-	// Generate or get user ID (You can pass userID as a query param or generate it)
-	userID := r.URL.Query().Get("userID")
-	if userID == "" {
-		userID = generateUniqueUserID() // Implement generateUniqueUserID()
-	}
-
-	// Add the user to the queue
-	log.Printf("User %s added to queue", userID)
-	if err := hub.queue.AddUserToQueue(userID); err != nil {
-		log.Println("Error adding user to queue:", err)
+		log.Printf("WebSocket upgrade error: %v", err)
 		return
 	}
 
-	// Try to pair this user with another one from the queue
-	pairedUserID, err := hub.queue.GetNextUser(userID)
+	// Generate connID and extract userID
+	userID := r.RemoteAddr
+	connID := conn.RemoteAddr().String()
+
+	// Inform use case of new connection
+	err = hub.useCase.HandleWSConnection(r.Context(), connID, userID)
 	if err != nil {
-		log.Println("Error getting next user from queue:", err)
+		log.Printf("Error connecting user: %v", err)
+		conn.Close()
 		return
 	}
 
-	// If the current user is paired with someone, start the chat
-	if pairedUserID != userID {
-		// Pair them up
-		log.Printf("Pairing users: %s and %s", userID, pairedUserID)
-		hub.clients[userID] = conn // Store the connection
-		hub.clients[pairedUserID].WriteMessage(websocket.TextMessage, []byte(fmt.Sprintf("You are paired with %s", userID)))
-		hub.clients[userID].WriteMessage(websocket.TextMessage, []byte(fmt.Sprintf("You are paired with %s", pairedUserID)))
-
-		// Now listen for messages from both clients
-		go hub.listenForMessages(userID, conn)
-		go hub.listenForMessages(pairedUserID, hub.clients[pairedUserID])
-	} else {
-		// If no pair is found, keep the user in the queue for now
-		log.Printf("Only one user found, waiting for another user to connect: %s", userID)
-	}
+	// Start message listener
+	go hub.listenForMessages(context.Background(), userID, conn)
 }
 
-// listenForMessages listens for incoming messages from the WebSocket connection.
-func (hub *WebSocketHub) listenForMessages(userID string, conn *websocket.Conn) {
+// listenForMessages listens for incoming messages and forwards them to paired user.
+func (hub *WebSocketHub) listenForMessages(ctx context.Context, userID string, conn *websocket.Conn) {
+	defer func() {
+		conn.Close()
+		delete(hub.useCase.Connections, userID)
+		hub.useCase.EndChatSession(ctx, userID)
+	}()
+
 	for {
-		// Read incoming message
-		messageType, message, err := conn.ReadMessage()
+		_, message, err := conn.ReadMessage()
 		if err != nil {
-			log.Printf("Error reading message from %s: %v", userID, err)
-			delete(hub.clients, userID) // Remove from active clients if disconnected
+			log.Printf("Connection closed for user %s: %v", userID, err)
 			break
 		}
 
-		// Broadcast the message to the paired user
-		pairedUserID, err := hub.queue.GetNextUser(userID) // Get paired user from the queue
+		// Retrieve chat partner via use case
+		partner, err := hub.useCase.GetChatPartner(ctx, userID)
 		if err != nil {
-			log.Printf("Error retrieving paired user for %s: %v", userID, err)
+			log.Printf("Partner not found for user %s: %v", userID, err)
 			continue
 		}
 
-		// Send message to paired user
-		if err := hub.clients[pairedUserID].WriteMessage(messageType, message); err != nil {
-			log.Printf("Error sending message to paired user %s: %v", pairedUserID, err)
-		}
 	}
-}
-
-func generateUniqueUserID() string {
-	return uuid.New().String()
 }

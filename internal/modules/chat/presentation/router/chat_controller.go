@@ -4,17 +4,16 @@ import (
 	"net/http"
 
 	"github.com/gorilla/mux"
-	"github.com/royroki/LetsGo/internal/modules/chat/infrastructure/waitingqueue"
-	"github.com/royroki/LetsGo/internal/modules/chat/presentation/websocket"
+	"github.com/royroki/LetsGo/internal/modules/chat/application/usecase"
+	"github.com/royroki/LetsGo/internal/modules/chat/presentation/controller"
 )
 
-func SetupRouter(wq *waitingqueue.WaitingQueue) *mux.Router {
+func SetupRouter(chatUsecase *usecase.ChatUseCase) *mux.Router {
 	router := mux.NewRouter()
-	hub := websocket.NewWebSocketHub(wq)
 
 	// WebSocket route for chat
 	router.HandleFunc("/chat", func(w http.ResponseWriter, r *http.Request) {
-		hub.HandleWebSocket(w, r)
+		controller.NewChatController(chatUsecase)
 	}).Methods("GET")
 
 	return router
