@@ -1,48 +1,72 @@
 <!DOCTYPE html>
 <html>
+
 <head>
     <title>Simple Chat</title>
 </head>
+
 <body>
     <h1>WebSocket Chat</h1>
-    <textarea id="messages" readonly></textarea><br/>
+    <textarea id="messages" readonly rows="10" cols="50"></textarea><br />
     <input id="messageInput" type="text" placeholder="Type a message...">
     <button id="sendButton">Send</button>
 
     <script>
-        // Connect to the WebSocket server
-        const socket = new WebSocket("ws://localhost:8080/chat");
+        let socket;
 
-        // Handle incoming messages
-        socket.onmessage = function(event) {
-            const messages = document.getElementById("messages");
-            messages.value += `\n${event.data}`; // Append received message
-            
-            // Scroll to the bottom of the textarea
-            messages.scrollTop = messages.scrollHeight;
+        function connectWebSocket() {
+            // ✅ Connect to the WebSocket server at /ws
+            socket = new WebSocket("ws://localhost:8080/ws");
+
+            // ✅ Handle incoming messages
+            socket.onmessage = function (event) {
+                const messages = document.getElementById("messages");
+                messages.value += `\n${event.data}`; // Append received message
+                messages.scrollTop = messages.scrollHeight; // Auto-scroll
+            };
+
+            // ✅ Handle WebSocket connection open
+            socket.onopen = function () {
+                console.log("✅ WebSocket connected");
+            };
+
+            // ✅ Handle WebSocket errors
+            socket.onerror = function (error) {
+                console.error("❌ WebSocket Error:", error);
+            };
+
+            // ✅ Handle WebSocket close and attempt reconnection
+            socket.onclose = function () {
+                console.warn("⚠️ WebSocket connection closed. Reconnecting...");
+                setTimeout(connectWebSocket, 3000); // Retry after 3 seconds
+            };
+        }
+
+        // ✅ Initialize WebSocket connection
+        connectWebSocket();
+
+        // ✅ Send message on button click
+        document.getElementById("sendButton").onclick = function () {
+            sendMessage();
         };
 
-        // Send message when the user clicks the send button
-        document.getElementById("sendButton").onclick = function() {
-            const message = document.getElementById("messageInput").value;
-            if (message) {
-                socket.send(message);  // Send the message to the server
-                document.getElementById("messageInput").value = ""; // Clear the input field
+        // ✅ Send message on "Enter" key press
+        document.getElementById("messageInput").addEventListener("keypress", function (event) {
+            if (event.key === "Enter") {
+                sendMessage();
             }
-        };
+        });
 
-        // Optional: Handle WebSocket open, close, or error events
-        socket.onopen = function() {
-            console.log("WebSocket connected");
-        };
+        function sendMessage() {
+            const messageInput = document.getElementById("messageInput");
+            const message = messageInput.value.trim();
 
-        socket.onerror = function(error) {
-            console.error("WebSocket Error:", error);
-        };
-
-        socket.onclose = function() {
-            console.log("WebSocket connection closed");
-        };
+            if (message) {
+                socket.send(message);  // ✅ Send the message to the server
+                messageInput.value = ""; // ✅ Clear input field
+            }
+        }
     </script>
 </body>
+
 </html>

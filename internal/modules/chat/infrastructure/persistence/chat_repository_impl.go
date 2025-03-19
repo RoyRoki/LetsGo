@@ -1,4 +1,4 @@
-package datasource
+package persistence
 
 import (
 	"context"
@@ -17,7 +17,7 @@ type RedisChatRepository struct {
 }
 
 // NewRedisChatRepository initializes a new RedisChatRepository
-func NewRedisChatRepository(client *redis.Client) repository.ChatRepository {
+func NewChatRepository(client *redis.Client) repository.ChatRepository {
 	return &RedisChatRepository{client: client}
 }
 
