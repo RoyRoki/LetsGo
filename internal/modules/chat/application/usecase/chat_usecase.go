@@ -6,7 +6,6 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/gorilla/websocket"
 	"github.com/royroki/LetsGo/internal/modules/chat/application/interfaces"
 	"github.com/royroki/LetsGo/internal/modules/chat/domain/entity"
 	service "github.com/royroki/LetsGo/internal/modules/chat/domain/services"
@@ -76,29 +75,6 @@ func (c *ChatUseCase) HandleChatPair(ctx context.Context, userA, userB entity.Us
 }
 
 // ListenFromConnection listens for messages from a connected user
-func (c *ChatUseCase) ListenFromConnection(userID string, conn *websocket.Conn) {
-	defer func() {
-		// When user disconnects, remove from WebSocket hub and queue
-		conn.Close()
-		c.chatService.EndChatSession(context.Background(), userID)
-		log.Printf("User disconnected: %s", userID)
-	}()
-
-	for {
-		// Read incoming message
-		_, message, err := conn.ReadMessage()
-		if err != nil {
-			log.Printf("⚠️ Error reading message from %s: %v", userID, err)
-			break // Exit loop on error (disconnect)
-		}
-
-		log.Printf("📩 Received message from %s: %s", userID, string(message))
-
-		// ✅ Forward the message to the user's chat partner
-		err = c.chatService.ForwardMessage(userID, message)
-		if err != nil {
-			log.Printf("⚠️ Error forwarding message: %v", err)
-			break
-		}
-	}
+func (c *ChatUseCase) ListenFromConnection(userID string) {
+	go c.chatService.ListenFromConnection(userID)
 }

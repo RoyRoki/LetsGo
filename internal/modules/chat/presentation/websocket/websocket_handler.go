@@ -44,6 +44,15 @@ func (h *WebSocketHandler) HandleWSConnection(w http.ResponseWriter, r *http.Req
 	// Add the new connection to ws hub
 	h.wsHub.AddConnection(connID, conn)
 
+	// Send welcome message to the user
+	welcomeMessage := "You're connected to LetsGo, wait for a partner..."
+	err = conn.WriteMessage(websocket.TextMessage, []byte(welcomeMessage))
+	if err != nil {
+		log.Printf("Error sending welcome message: %v", err)
+		h.wsHub.RemoveConnection(connID)
+		return
+	}
+
 	// Inform use case of new connection
 	err = h.useCase.HandleNewConnection(r.Context(), connID, userID)
 	if err != nil {
@@ -51,4 +60,5 @@ func (h *WebSocketHandler) HandleWSConnection(w http.ResponseWriter, r *http.Req
 		h.wsHub.RemoveConnection(connID)
 		return
 	}
+
 }

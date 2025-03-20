@@ -38,9 +38,6 @@ func main() {
 
 	chatService := service.NewChatService(chatRepo, userRepo, wsHub)
 
-	// Start worker
-	go worker.MatchmakingWorker()
-
 	// Use interface instead of concrete implementation
 	var chatUsecase interfaces.ChatUseCase = usecase.NewChatUseCase(chatService)
 
@@ -49,6 +46,11 @@ func main() {
 	chatController := controller.NewChatController(chatUsecase, wsHandler)
 
 	chatRouter := router.SetupChatRouter(chatController)
+
+	// Start worker
+	chatWorker := worker.NewMatchmakingWorker(chatUsecase, userRepo)
+
+	go chatWorker.Run()
 
 	// Start the HTTP server
 	log.Println("✅ WebSocket Server started at ws://localhost:8080/ws")

@@ -3,7 +3,6 @@ package interfaces
 import (
 	"context"
 
-	"github.com/gorilla/websocket"
 	"github.com/royroki/LetsGo/internal/modules/chat/domain/entity"
 )
 
@@ -13,5 +12,5 @@ type ChatUseCase interface {
 	EndChatSession(ctx context.Context, userID string) error
 	HandleNewConnection(ctx context.Context, connId, userId string) error
 	HandleChatPair(ctx context.Context, userA, userB entity.User) error
-	ListenFromConnection(userID string, conn *websocket.Conn)
+	ListenFromConnection(userID string)
 }

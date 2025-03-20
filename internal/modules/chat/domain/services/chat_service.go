@@ -91,3 +91,34 @@ func (s *ChatService) ForwardMessage(senderID string, message []byte) error {
 	}
 	return err
 }
+
+
+// ListenFromConnection listens for messages from a connected user
+func (s *ChatService) ListenFromConnection(userID string) {
+	ws := s.wsRepo.GetConnection(userID)
+
+	defer func() {
+		// When user disconnects, remove from WebSocket hub and queue
+		ws.Close()
+		s.EndChatSession(context.Background(), userID)
+		log.Printf("User disconnected: %s", userID)
+	}()
+
+	for {
+		// Read incoming message
+		_, message, err := ws.ReadMessage()
+		if err != nil {
+			log.Printf("⚠️ Error reading message from %s: %v", userID, err)
+			break // Exit loop on error (disconnect)
+		}
+
+		log.Printf("📩 Received message from %s: %s", userID, string(message))
+
+		// ✅ Forward the message to the user's chat partner
+		err = s.ForwardMessage(userID, message)
+		if err != nil {
+			log.Printf("⚠️ Error forwarding message: %v", err)
+			break
+		}
+	}
+}
