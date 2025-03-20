@@ -12,5 +12,5 @@ type ChatUseCase interface {
 	EndChatSession(ctx context.Context, userID string) error
 	HandleNewConnection(ctx context.Context, connId, userId string) error
 	HandleChatPair(ctx context.Context, userA, userB entity.User) error
-	ListenFromConnection(userID string)
+	ListenFromConnection(connID string)
 }

@@ -4,6 +4,7 @@ import (
 	"log"
 	"net/http"
 
+	"github.com/google/uuid"
 	"github.com/gorilla/websocket"
 	"github.com/royroki/LetsGo/internal/modules/chat/application/interfaces"
 	web_socket "github.com/royroki/LetsGo/internal/modules/chat/infrastructure/websocket"
@@ -38,8 +39,10 @@ func (h *WebSocketHandler) HandleWSConnection(w http.ResponseWriter, r *http.Req
 	}
 
 	// Generate connID and extract userID
-	userID := r.RemoteAddr
-	connID := conn.RemoteAddr().String()
+	// userID := r.RemoteAddr
+	// connID := conn.RemoteAddr().String()
+	userID := uuid.New().String()
+	connID := uuid.New().String()
 
 	// Add the new connection to ws hub
 	h.wsHub.AddConnection(connID, conn)

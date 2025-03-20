@@ -55,6 +55,7 @@ func (c *ChatUseCase) HandleNewConnection(ctx context.Context, connId, userId st
 
 // HandleChatPair creates a chat session when two users are matched
 func (c *ChatUseCase) HandleChatPair(ctx context.Context, userA, userB entity.User) error {
+
 	// Create chat session entity
 	chat := entity.Chat{
 		ID:        uuid.New().String(),
@@ -70,11 +71,20 @@ func (c *ChatUseCase) HandleChatPair(ctx context.Context, userA, userB entity.Us
 		return err
 	}
 
+	if err := c.chatService.UpdateUserChatID(ctx, userA.UserID, chat.ID); err != nil {
+		log.Printf("❌ Error updating ChatID for user %s: %v", userA.UserID, err)
+		return err
+	}
+	if err := c.chatService.UpdateUserChatID(ctx, userB.UserID, chat.ID); err != nil {
+		log.Printf("❌ Error updating ChatID for user %s: %v", userB.UserID, err)
+		return err
+	}
+
 	log.Printf("✅ Chat session started: %s <-> %s (ChatID: %s)", userA.UserID, userB.UserID, chat.ID)
 	return nil
 }
 
 // ListenFromConnection listens for messages from a connected user
-func (c *ChatUseCase) ListenFromConnection(userID string) {
-	go c.chatService.ListenFromConnection(userID)
+func (c *ChatUseCase) ListenFromConnection(connID string) {
+	go c.chatService.ListenFromConnection(connID)
 }

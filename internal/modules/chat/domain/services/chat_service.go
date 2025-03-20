@@ -64,23 +64,30 @@ func (s *ChatService) AddUserToQueue(ctx context.Context, user entity.User) erro
 
 // CreateChatSession saves a chat session in Redis
 func (s *ChatService) CreateChatSession(ctx context.Context, chat *entity.Chat) error {
-	return s.chatRepo.SaveChatSession(ctx, chat)
+	err := s.chatRepo.SaveChatSession(ctx, chat)
+	if err != nil {
+		log.Printf("❌ Error saving chat session: %v", err)
+		return err
+	}
+
+	log.Printf("✅ Chat session created: %s <-> %s (ChatID: %s)", chat.UserA.UserID, chat.UserB.UserID, chat.ID)
+	return nil
 }
 
 // ForwardMessage forwards a message to the chat partner
-func (s *ChatService) ForwardMessage(senderID string, message []byte) error {
+func (s *ChatService) ForwardMessage(chatID string, message []byte) error {
 	ctx := context.Background()
 
 	// Retrieve chat session
-	chat, err := s.chatRepo.GetChatSession(ctx, senderID)
+	chat, err := s.chatRepo.GetChatSession(ctx, chatID)
 	if err != nil {
-		log.Printf("⚠️ Error retrieving chat session for user %s: %v", senderID, err)
+		log.Printf("⚠️ Error retrieving chat session for user %s: %v", chatID, err)
 		return err
 	}
 
 	// Determine recipient
 	recipientID := chat.UserA.UserID
-	if chat.UserA.UserID == senderID {
+	if chat.UserA.UserID == chatID {
 		recipientID = chat.UserB.UserID
 	}
 
@@ -92,33 +99,37 @@ func (s *ChatService) ForwardMessage(senderID string, message []byte) error {
 	return err
 }
 
-
 // ListenFromConnection listens for messages from a connected user
-func (s *ChatService) ListenFromConnection(userID string) {
-	ws := s.wsRepo.GetConnection(userID)
+func (s *ChatService) ListenFromConnection(connID string) {
+	ws := s.wsRepo.GetConnection(connID)
 
 	defer func() {
 		// When user disconnects, remove from WebSocket hub and queue
 		ws.Close()
-		s.EndChatSession(context.Background(), userID)
-		log.Printf("User disconnected: %s", userID)
+		s.EndChatSession(context.Background(), connID)
+		log.Printf("User disconnected: %s", connID)
 	}()
 
 	for {
 		// Read incoming message
 		_, message, err := ws.ReadMessage()
 		if err != nil {
-			log.Printf("⚠️ Error reading message from %s: %v", userID, err)
+			log.Printf("⚠️ Error reading message from %s: %v", connID, err)
 			break // Exit loop on error (disconnect)
 		}
 
-		log.Printf("📩 Received message from %s: %s", userID, string(message))
+		log.Printf("📩 Received message from %s: %s", connID, string(message))
 
 		// ✅ Forward the message to the user's chat partner
-		err = s.ForwardMessage(userID, message)
+		err = s.ForwardMessage(connID, message)
 		if err != nil {
 			log.Printf("⚠️ Error forwarding message: %v", err)
 			break
 		}
 	}
+}
+
+// UpdateUserChatID updates the user's chat ID
+func (s *ChatService) UpdateUserChatID(ctx context.Context, userID, chatID string) error {
+	return s.userRepo.UpdateUserChatID(ctx, userID, chatID)
 }

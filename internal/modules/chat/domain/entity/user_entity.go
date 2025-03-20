@@ -6,6 +6,7 @@ import "time"
 type User struct {
 	UserID   string    `json:"user_id"`
 	ConnID   string    `json:"conn_id"`
+	ChatID   string    `json:"chat_id"`
 	JoinTime time.Time `json:"join_time"`
 	Chatted  int64     `json:"chatted"`
 }

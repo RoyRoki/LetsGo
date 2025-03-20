@@ -24,35 +24,47 @@ func NewMatchmakingWorker(chatUsecase interfaces.ChatUseCase, userRepo repositor
 }
 
 // Run starts the matchmaking loop
+// Run starts the matchmaking loop
 func (w *MatchmakingWorker) Run() {
 	log.Println("🔄 Matchmaking Worker Started...")
 
 	for {
 		ctx := context.Background()
 
-		// Pop the top two users from the queue
-		users, err := w.userRepo.PopTopUsers(ctx, 2) // Atomic removal
-		if err != nil || len(users) < 2 {
+		// ✅ Step 1: Pop users (but only if 2+ exist)
+		users, err := w.userRepo.PopTopUsers(ctx, 2)
+		if err != nil {
+			log.Printf("❌ Error retrieving users from queue: %v", err)
 			time.Sleep(5 * time.Second)
-			log.Printf("Total waiting user : %d", len(users))
 			continue
 		}
 
-		// Pair users
+		// ✅ Step 2: If only 1 user remains, re-add them
+		if len(users) == 1 {
+			log.Printf("⚠️ Only one user (%s) left in queue. Re-adding them...", users[0].UserID)
+			if err := w.userRepo.AddUserToQueue(ctx, users[0]); err != nil {
+				log.Printf("❌ Failed to re-add user to queue: %v", err)
+			}
+			time.Sleep(5 * time.Second)
+			continue
+		}
+
+		// ✅ Step 3: Pair users (always in groups of 2)
 		for len(users) >= 2 {
 			userA, userB := users[0], users[1]
-			users = users[2:] // Remove paired users from the list
+			users = users[2:]
 
-			// Handle chat pairing
 			if err := w.chatUsecase.HandleChatPair(ctx, userA, userB); err != nil {
-				log.Println("⚠️ Failed to pair users:", err)
+				log.Printf("❌ Failed to pair users %s & %s: %v", userA.UserID, userB.UserID, err)
 				continue
 			}
 
 			log.Printf("✅ Matched Users: %s <-> %s", userA.UserID, userB.UserID)
+			w.chatUsecase.ListenFromConnection(userA.ConnID)
+			w.chatUsecase.ListenFromConnection(userB.ConnID)
 		}
 
-		// Sleep before the next check
+		// ✅ Step 4: Sleep before next matchmaking check
 		time.Sleep(5 * time.Second)
 	}
 }

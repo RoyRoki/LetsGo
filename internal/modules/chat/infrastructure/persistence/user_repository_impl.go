@@ -36,6 +36,7 @@ func (r *UserRepository) AddUserToQueue(ctx context.Context, user entity.User) e
 
 	_, err := r.client.HSet(ctx, userKey, map[string]interface{}{
 		"connID":   user.ConnID,
+		"chatID":   user.ChatID,
 		"joinTime": user.JoinTime.Unix(),
 		"chatted":  user.Chatted,
 		"data":     userData,
@@ -128,4 +129,19 @@ func (r *UserRepository) PopTopUsers(ctx context.Context, limit int) ([]entity.U
 	}
 
 	return users, nil
+}
+
+// UpdateUserChatID updates the user's chat ID in Redis
+func (r *UserRepository) UpdateUserChatID(ctx context.Context, userID, chatID string) error {
+	userKey := fmt.Sprintf("user:%s", userID)
+
+	// ✅ Store ChatID in Redis
+	_, err := r.client.HSet(ctx, userKey, "chatID", chatID).Result()
+	if err != nil {
+		log.Printf("❌ Error updating chat ID for user %s: %v", userID, err)
+		return err
+	}
+
+	log.Printf("✅ Updated ChatID for user %s: %s", userID, chatID)
+	return nil
 }
