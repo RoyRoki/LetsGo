@@ -75,11 +75,13 @@ func (s *ChatService) CreateChatSession(ctx context.Context, chat *entity.Chat) 
 }
 
 // ForwardMessage forwards a message to the chat partner
-func (s *ChatService) ForwardMessage(chatID string, message []byte) error {
+func (s *ChatService) ForwardMessage(senderID string, message []byte) error {
 	ctx := context.Background()
 
+	user, err := s.userRepo.GetUser(ctx, senderID);
+
 	// Retrieve chat session
-	chat, err := s.chatRepo.GetChatSession(ctx, chatID)
+	chat, err := s.chatRepo.GetChatSession(ctx, user.ChatID)
 	if err != nil {
 		log.Printf("⚠️ Error retrieving chat session for user %s: %v", chatID, err)
 		return err
@@ -87,7 +89,7 @@ func (s *ChatService) ForwardMessage(chatID string, message []byte) error {
 
 	// Determine recipient
 	recipientID := chat.UserA.UserID
-	if chat.UserA.UserID == chatID {
+	if chat.UserA.UserID == user.ChatID {
 		recipientID = chat.UserB.UserID
 	}
 
@@ -100,28 +102,41 @@ func (s *ChatService) ForwardMessage(chatID string, message []byte) error {
 }
 
 // ListenFromConnection listens for messages from a connected user
-func (s *ChatService) ListenFromConnection(connID string) {
-	ws := s.wsRepo.GetConnection(connID)
+func (s *ChatService) ListenFromConnection(userID string) {
+	ctx := context.Background()
+
+	ws := s.wsRepo.GetConnection(userID)
+	user, err := s.userRepo.GetUser(ctx, userID)
+	if err != nil {
+		log.Println("Failed to listen.")
+	}
+	recipientID := s.chatRepo.GetChatPartner(ctx, user.ChatID, user.userID)
 
 	defer func() {
+		message := "You are Disconnected."
+		err := s.wsRepo.SendMessage(userID, []byte(message))
+
+		if err != nil {
+			log.Println("Failed to send disconnec message.")
+		}
 		// When user disconnects, remove from WebSocket hub and queue
 		ws.Close()
-		s.EndChatSession(context.Background(), connID)
-		log.Printf("User disconnected: %s", connID)
+		s.EndChatSession(context.Background(), userID)
+		log.Printf("User disconnected: %s", userID)
 	}()
 
 	for {
 		// Read incoming message
 		_, message, err := ws.ReadMessage()
 		if err != nil {
-			log.Printf("⚠️ Error reading message from %s: %v", connID, err)
+			log.Printf("⚠️ Error reading message from %s: %v", userID, err)
 			break // Exit loop on error (disconnect)
 		}
 
-		log.Printf("📩 Received message from %s: %s", connID, string(message))
+		log.Printf("📩 Received message from %s: %s", userID, string(message))
 
 		// ✅ Forward the message to the user's chat partner
-		err = s.ForwardMessage(connID, message)
+		err = s.ForwardMessage(recipientID, message)
 		if err != nil {
 			log.Printf("⚠️ Error forwarding message: %v", err)
 			break

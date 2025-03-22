@@ -39,28 +39,16 @@ func (h *WebSocketHandler) HandleWSConnection(w http.ResponseWriter, r *http.Req
 	}
 
 	// Generate connID and extract userID
-	// userID := r.RemoteAddr
-	// connID := conn.RemoteAddr().String()
 	userID := uuid.New().String()
-	connID := uuid.New().String()
 
 	// Add the new connection to ws hub
-	h.wsHub.AddConnection(connID, conn)
-
-	// Send welcome message to the user
-	welcomeMessage := "You're connected to LetsGo, wait for a partner..."
-	err = conn.WriteMessage(websocket.TextMessage, []byte(welcomeMessage))
-	if err != nil {
-		log.Printf("Error sending welcome message: %v", err)
-		h.wsHub.RemoveConnection(connID)
-		return
-	}
+	h.wsHub.AddConnection(userID, conn)
 
 	// Inform use case of new connection
-	err = h.useCase.HandleNewConnection(r.Context(), connID, userID)
+	err = h.useCase.HandleNewConnection(r.Context(), userID)
 	if err != nil {
 		log.Printf("Error connecting user: %v", err)
-		h.wsHub.RemoveConnection(connID)
+		h.wsHub.RemoveConnection(userID)
 		return
 	}
 

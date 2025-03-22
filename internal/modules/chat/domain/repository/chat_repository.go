@@ -15,7 +15,7 @@ type ChatRepository interface {
 	GetChatSession(ctx context.Context, chatID string) (*entity.Chat, error)
 
 	// Get the chat partner for a user
-	GetChatPartner(ctx context.Context, userID string) (*entity.User, error)
+	GetChatPartner(ctx context.Context, chatID, userID string) (*entity.User, error)
 
 	// Delete a chat session from storage
 	DeleteChatSession(ctx context.Context, chatID string) error

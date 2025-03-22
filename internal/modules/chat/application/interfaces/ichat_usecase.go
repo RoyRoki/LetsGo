@@ -10,7 +10,7 @@ import (
 type ChatUseCase interface {
 	GetChatPartner(ctx context.Context, userID string) (any, error)
 	EndChatSession(ctx context.Context, userID string) error
-	HandleNewConnection(ctx context.Context, connId, userId string) error
+	HandleNewConnection(ctx context.Context, userID string) error
 	HandleChatPair(ctx context.Context, userA, userB entity.User) error
-	ListenFromConnection(connID string)
+	ListenFromConnection(userID string)
 }

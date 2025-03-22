@@ -42,11 +42,11 @@ func (h *WebSocketHub) RemoveConnection(userID string) {
 }
 
 // GetConnection retrieves a WebSocket connection
-func (h *WebSocketHub) GetConnection(connID string) *websocket.Conn {
+func (h *WebSocketHub) GetConnection(userID string) *websocket.Conn {
 	h.mu.Lock()
 	defer h.mu.Unlock()
 
-	conn, exists := h.WSHub[connID]
+	conn, exists := h.WSHub[userID]
 	if !exists || conn == nil {
 		log.Printf("⚠️ No active WebSocket connection for %s", connID)
 		return nil

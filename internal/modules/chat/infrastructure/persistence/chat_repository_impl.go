@@ -74,13 +74,7 @@ func (r *RedisChatRepository) GetChatSession(ctx context.Context, chatID string)
 }
 
 // GetChatPartner retrieves the chat partner for a user
-func (r *RedisChatRepository) GetChatPartner(ctx context.Context, userID string) (*entity.User, error) {
-	// Get the chat session ID for the user
-	chatID, err := r.client.Get(ctx, fmt.Sprintf("chat:%s", userID)).Result()
-	if err != nil {
-		return nil, fmt.Errorf("no active chat found for user: %s", userID)
-	}
-
+func (r *RedisChatRepository) GetChatPartner(ctx context.Context, chatID, userID string) (*entity.User, error) {
 	// Retrieve the chat session
 	chat, err := r.GetChatSession(ctx, chatID)
 	if err != nil {

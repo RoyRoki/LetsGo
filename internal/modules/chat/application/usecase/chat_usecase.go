@@ -31,13 +31,12 @@ func (c *ChatUseCase) EndChatSession(ctx context.Context, userID string) error {
 }
 
 // HandleWSConnection manages WebSocket connections, pairing users, and messaging.
-func (c *ChatUseCase) HandleNewConnection(ctx context.Context, connId, userId string) error {
-	log.Printf("User connected: %s (ConnID: %s)", userId, connId)
+func (c *ChatUseCase) HandleNewConnection(ctx context.Context, userId string) error {
+	log.Printf("User connected: (ID: %s)", userId)
 
 	// Create a User entity
 	user := entity.User{
 		UserID:   userId,
-		ConnID:   connId,
 		JoinTime: time.Now(),
 		Chatted:  0,
 	}
@@ -85,6 +84,6 @@ func (c *ChatUseCase) HandleChatPair(ctx context.Context, userA, userB entity.Us
 }
 
 // ListenFromConnection listens for messages from a connected user
-func (c *ChatUseCase) ListenFromConnection(connID string) {
-	go c.chatService.ListenFromConnection(connID)
+func (c *ChatUseCase) ListenFromConnection(userID string) {
+	go c.chatService.ListenFromConnection(userID)
 }
