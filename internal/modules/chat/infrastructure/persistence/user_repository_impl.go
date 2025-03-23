@@ -35,7 +35,6 @@ func (r *UserRepository) AddUserToQueue(ctx context.Context, user entity.User) e
 	userData, _ := json.Marshal(user)
 
 	_, err := r.client.HSet(ctx, userKey, map[string]interface{}{
-		"connID":   user.ConnID,
 		"chatID":   user.ChatID,
 		"joinTime": user.JoinTime.Unix(),
 		"chatted":  user.Chatted,
@@ -73,7 +72,7 @@ func (r *UserRepository) GetUser(ctx context.Context, userID string) (*entity.Us
 
 	user := &entity.User{
 		UserID:   userID,
-		ConnID:   data["connID"],
+		ChatID: data["chatID"],
 		JoinTime: time.Unix(parseInt64(data["joinTime"]), 0),
 		Chatted:  parseInt64(data["chatted"]),
 	}

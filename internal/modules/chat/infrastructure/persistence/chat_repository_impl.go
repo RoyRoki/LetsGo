@@ -108,7 +108,6 @@ func (r *RedisChatRepository) DeleteChatSession(ctx context.Context, chatID stri
 		log.Printf("Error deleting chat session: %v", err)
 		return err
 	}
-
 	log.Printf("Chat session deleted: %s", chatID)
 	return nil
 }

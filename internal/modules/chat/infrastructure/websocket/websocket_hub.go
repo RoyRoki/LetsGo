@@ -48,7 +48,7 @@ func (h *WebSocketHub) GetConnection(userID string) *websocket.Conn {
 
 	conn, exists := h.WSHub[userID]
 	if !exists || conn == nil {
-		log.Printf("⚠️ No active WebSocket connection for %s", connID)
+		log.Printf("⚠️ No active WebSocket connection for %s", userID)
 		return nil
 	}
 	return conn

@@ -48,7 +48,7 @@ func (c *ChatUseCase) HandleNewConnection(ctx context.Context, userId string) er
 		return err
 	}
 
-	log.Printf("User %s added to waiting queue. Worker will handle pairing.", userId)
+	log.Printf("User %s added to waiting queue.", userId)
 	return nil
 }
 

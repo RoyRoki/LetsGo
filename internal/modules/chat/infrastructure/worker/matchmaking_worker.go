@@ -60,8 +60,8 @@ func (w *MatchmakingWorker) Run() {
 			}
 
 			log.Printf("✅ Matched Users: %s <-> %s", userA.UserID, userB.UserID)
-			w.chatUsecase.ListenFromConnection(userA.ConnID)
-			w.chatUsecase.ListenFromConnection(userB.ConnID)
+			w.chatUsecase.ListenFromConnection(userA.UserID)
+			w.chatUsecase.ListenFromConnection(userB.UserID)
 		}
 
 		// ✅ Step 4: Sleep before next matchmaking check

@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"fmt"
 	"log"
 
 	"github.com/royroki/LetsGo/internal/modules/chat/domain/entity"
@@ -42,6 +43,10 @@ func (s *ChatService) EndChatSession(ctx context.Context, userID string) error {
 		return err
 	}
 
+	// Send message for disconnect 
+	s.wsRepo.SendMessage(chat.UserA.UserID, []byte("New the chat."))
+	s.wsRepo.SendMessage(chat.UserB.UserID, []byte("New the chat."))
+
 	// Remove chat session
 	err = s.chatRepo.DeleteChatSession(ctx, chat.ID)
 	if err != nil {
@@ -59,7 +64,12 @@ func (s *ChatService) EndChatSession(ctx context.Context, userID string) error {
 
 // AddUserToQueue calls UserRepository method via ChatService
 func (s *ChatService) AddUserToQueue(ctx context.Context, user entity.User) error {
-	return s.userRepo.AddUserToQueue(ctx, user)
+	err := s.userRepo.AddUserToQueue(ctx, user)
+	if err == nil {
+		message := fmt.Sprintf("ID : %s \nLetsGo wait for partner", user.UserID)
+		s.wsRepo.SendMessage(user.UserID, []byte(message))
+	}
+	return err;
 }
 
 // CreateChatSession saves a chat session in Redis
@@ -69,6 +79,10 @@ func (s *ChatService) CreateChatSession(ctx context.Context, chat *entity.Chat) 
 		log.Printf("❌ Error saving chat session: %v", err)
 		return err
 	}
+// Send message for new chat 
+	s.wsRepo.SendMessage(chat.UserA.UserID, []byte("Ending the chat."))
+	s.wsRepo.SendMessage(chat.UserB.UserID, []byte("New the chat."))
+
 
 	log.Printf("✅ Chat session created: %s <-> %s (ChatID: %s)", chat.UserA.UserID, chat.UserB.UserID, chat.ID)
 	return nil
@@ -83,7 +97,7 @@ func (s *ChatService) ForwardMessage(senderID string, message []byte) error {
 	// Retrieve chat session
 	chat, err := s.chatRepo.GetChatSession(ctx, user.ChatID)
 	if err != nil {
-		log.Printf("⚠️ Error retrieving chat session for user %s: %v", chatID, err)
+		log.Printf("⚠️ Error retrieving chat session for user %s: %v", user.UserID, err)
 		return err
 	}
 
@@ -106,15 +120,19 @@ func (s *ChatService) ListenFromConnection(userID string) {
 	ctx := context.Background()
 
 	ws := s.wsRepo.GetConnection(userID)
+	if ws == nil {
+		log.Printf("⚠️ No active WebSocket connection for user %s", userID)
+		return // Prevent further execution
+	}
 	user, err := s.userRepo.GetUser(ctx, userID)
 	if err != nil {
 		log.Println("Failed to listen.")
 	}
-	recipientID := s.chatRepo.GetChatPartner(ctx, user.ChatID, user.userID)
+	partner, err := s.chatRepo.GetChatPartner(ctx, user.ChatID, user.UserID)
 
 	defer func() {
 		message := "You are Disconnected."
-		err := s.wsRepo.SendMessage(userID, []byte(message))
+		err := s.wsRepo.SendMessage(partner.UserID, []byte(message))
 
 		if err != nil {
 			log.Println("Failed to send disconnec message.")
@@ -136,7 +154,7 @@ func (s *ChatService) ListenFromConnection(userID string) {
 		log.Printf("📩 Received message from %s: %s", userID, string(message))
 
 		// ✅ Forward the message to the user's chat partner
-		err = s.ForwardMessage(recipientID, message)
+		err = s.ForwardMessage(partner.UserID, message)
 		if err != nil {
 			log.Printf("⚠️ Error forwarding message: %v", err)
 			break
