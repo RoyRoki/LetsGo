@@ -144,3 +144,14 @@ func (r *UserRepository) UpdateUserChatID(ctx context.Context, userID, chatID st
 	log.Printf("✅ Updated ChatID for user %s: %s", userID, chatID)
 	return nil
 }
+
+
+// GetQueueLength returns the number of users in the waiting queue
+func (r *UserRepository) GetQueueLength(ctx context.Context) (int, error) {
+	count, err := r.client.ZCard(ctx, r.queue).Result()
+	if err != nil {
+		log.Printf("❌ Error getting queue length: %v", err)
+		return 0, err
+	}
+	return int(count), nil
+}

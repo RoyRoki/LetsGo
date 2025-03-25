@@ -12,4 +12,5 @@ type UserRepository interface {
 	GetUser(ctx context.Context, userID string) (*entity.User, error)
 	PopTopUsers(ctx context.Context, i int) ([]entity.User, error)
 	RemoveUser(ctx context.Context, userID string) error
+	GetQueueLength(ctx context.Context) (int, error)	
 }

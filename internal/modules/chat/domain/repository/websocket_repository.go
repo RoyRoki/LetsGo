@@ -8,4 +8,5 @@ type WebSocketRepository interface {
 	RemoveConnection(userID string)
 	GetConnection(userID string) *websocket.Conn
 	SendMessage(userID string, message []byte) error
+	Shutdown()
 }

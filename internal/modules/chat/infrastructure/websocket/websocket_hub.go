@@ -71,3 +71,22 @@ func (h *WebSocketHub) SendMessage(userID string, message []byte) error {
 	}
 	return nil
 }
+
+// Shutdown gracefully closes all WebSocket connections and clears the hub
+func (h *WebSocketHub) Shutdown() {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+
+	log.Println("🔻 Closing all active WebSocket connections...")
+
+	for userID, conn := range h.WSHub {
+		err := conn.Close()
+		if err != nil {
+			log.Printf("⚠️ Error closing WebSocket for user %s: %v", userID, err)
+		}
+		delete(h.WSHub, userID)
+	}
+
+	log.Println("✅ WebSocketHub shutdown complete.")
+}
+

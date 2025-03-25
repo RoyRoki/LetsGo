@@ -1,72 +1,96 @@
 <!doctype html>
 <html>
-  <head>
-    <title>Simple Chat</title>
-  </head>
 
-  <body>
-    <h1>WebSocket Chat</h1>
-    <textarea id="messages" readonly rows="10" cols="50"></textarea><br />
-    <input id="messageInput" type="text" placeholder="Type a message..." />
-    <button id="sendButton">Send</button>
+<head>
+  <title>Simple Chat</title>
+</head>
 
-    <script>
-      let socket;
+<body>
+  <h1>WebSocket Chat</h1>
+  <textarea id="messages" readonly rows="10" cols="50"></textarea><br />
+  <input id="messageInput" type="text" placeholder="Type a message..." />
+  <button id="sendButton">Send</button>
+  <button id="resetButton">Reset</button>
+  <button id="disconnectButton">Disconnect</button>
+  <button id="debugButton">Toggle Debug</button>
 
-      function connectWebSocket() {
-        // ✅ Connect to the WebSocket server at /ws
-        socket = new WebSocket("ws://localhost:8080/ws");
+  <script>
+    let socket;
+    let debugMode = false; // Debug mode flag
 
-        // ✅ Handle incoming messages
-        socket.onmessage = function (event) {
-          const messages = document.getElementById("messages");
-          messages.value += `\n${event.data}`; // Append received message
-          messages.scrollTop = messages.scrollHeight; // Auto-scroll
-        };
+    function connectWebSocket() {
+      socket = new WebSocket("ws://localhost:8080/ws");
 
-        // ✅ Handle WebSocket connection open
-        socket.onopen = function () {
-          console.log("✅ WebSocket connected");
-        };
-
-        // ✅ Handle WebSocket errors
-        socket.onerror = function (error) {
-          console.error("❌ WebSocket Error:", error);
-        };
-
-        // ✅ Handle WebSocket close and attempt reconnection
-        socket.onclose = function () {
-          console.warn("⚠️ WebSocket connection closed. Reconnecting...");
-          setTimeout(connectWebSocket, 3000); // Retry after 3 seconds
-        };
-      }
-
-      // ✅ Initialize WebSocket connection
-      connectWebSocket();
-
-      // ✅ Send message on button click
-      document.getElementById("sendButton").onclick = function () {
-        sendMessage();
+      socket.onmessage = function (event) {
+        logDebug(`📩 Message received: ${event.data}`);
+        const messages = document.getElementById("messages");
+        messages.value += `\n${event.data}`;
+        messages.scrollTop = messages.scrollHeight;
       };
 
-      // ✅ Send message on "Enter" key press
-      document
-        .getElementById("messageInput")
-        .addEventListener("keypress", function (event) {
-          if (event.key === "Enter") {
-            sendMessage();
-          }
-        });
+      socket.onopen = function () {
+        logDebug("✅ WebSocket connected");
+      };
 
-      function sendMessage() {
-        const messageInput = document.getElementById("messageInput");
-        const message = messageInput.value.trim();
+      socket.onerror = function (error) {
+        logDebug(`❌ WebSocket Error: ${error.message}`);
+      };
 
-        if (message) {
-          socket.send(message); // ✅ Send the message to the server
-          messageInput.value = ""; // ✅ Clear input field
+      socket.onclose = function () {
+        logDebug("⚠️ WebSocket connection closed. Reconnecting...");
+        setTimeout(connectWebSocket, 3000);
+      };
+    }
+
+    connectWebSocket();
+
+    document.getElementById("sendButton").onclick = function () {
+      sendMessage();
+    };
+
+    document
+      .getElementById("messageInput")
+      .addEventListener("keypress", function (event) {
+        if (event.key === "Enter") {
+          sendMessage();
         }
+      });
+
+    document.getElementById("resetButton").onclick = function () {
+      document.getElementById("messages").value = "";
+      document.getElementById("messageInput").value = "";
+      logDebug("🔄 Chat reset.");
+    };
+
+    document.getElementById("disconnectButton").onclick = function () {
+      if (socket) {
+        socket.close();
+        logDebug("🔌 WebSocket manually disconnected.");
       }
-    </script>
-  </body>
+    };
+
+    document.getElementById("debugButton").onclick = function () {
+      debugMode = !debugMode;
+      alert(`Debug Mode: ${debugMode ? "ON" : "OFF"}`);
+    };
+
+    function sendMessage() {
+      const messageInput = document.getElementById("messageInput");
+      const message = messageInput.value.trim();
+
+      if (message) {
+        socket.send(message);
+        logDebug(`📤 Sent message: ${message}`);
+        messageInput.value = "";
+      }
+    }
+
+    function logDebug(message) {
+      if (debugMode) {
+        console.log(message);
+      }
+    }
+  </script>
+</body>
+
 </html>
