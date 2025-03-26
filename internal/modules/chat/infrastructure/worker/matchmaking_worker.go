@@ -33,7 +33,8 @@ func (w *MatchmakingWorker) Run() {
 		select {
 		case <-w.stopChan:
 			log.Println("🛑 Matchmaking Worker Stopped.")
-			return
+			break
+			
 		default:
 			ctx := context.Background()
 

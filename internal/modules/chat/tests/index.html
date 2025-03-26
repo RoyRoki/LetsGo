@@ -1,96 +1,136 @@
 <!doctype html>
-<html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Glassy Chat</title>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        background: rgba(0, 0, 0, 0.8);
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        height: 100vh;
+        color: white;
+      }
 
-<head>
-  <title>Simple Chat</title>
-</head>
+      .chat-container {
+        width: 400px;
+        background: rgba(255, 255, 255, 0.1);
+        backdrop-filter: blur(10px);
+        border-radius: 10px;
+        padding: 20px;
+        text-align: center;
+      }
 
-<body>
-  <h1>WebSocket Chat</h1>
-  <textarea id="messages" readonly rows="10" cols="50"></textarea><br />
-  <input id="messageInput" type="text" placeholder="Type a message..." />
-  <button id="sendButton">Send</button>
-  <button id="resetButton">Reset</button>
-  <button id="disconnectButton">Disconnect</button>
-  <button id="debugButton">Toggle Debug</button>
+      #messages {
+        width: 100%;
+        height: 300px;
+        background: rgba(255, 255, 255, 0.2);
+        backdrop-filter: blur(10px);
+        border-radius: 5px;
+        padding: 10px;
+        overflow-y: auto;
+        white-space: pre-line;
+      }
 
-  <script>
-    let socket;
-    let debugMode = false; // Debug mode flag
+      .input-container {
+        display: flex;
+        gap: 10px;
+        margin-top: 10px;
+      }
 
-    function connectWebSocket() {
-      socket = new WebSocket("ws://localhost:8080/ws");
+      input {
+        flex: 1;
+        padding: 10px;
+        border-radius: 5px;
+        border: none;
+        outline: none;
+      }
 
-      socket.onmessage = function (event) {
-        logDebug(`📩 Message received: ${event.data}`);
-        const messages = document.getElementById("messages");
-        messages.value += `\n${event.data}`;
-        messages.scrollTop = messages.scrollHeight;
-      };
+      button {
+        padding: 10px 15px;
+        background: rgba(255, 255, 255, 0.2);
+        border: none;
+        border-radius: 5px;
+        color: white;
+        cursor: pointer;
+      }
 
-      socket.onopen = function () {
-        logDebug("✅ WebSocket connected");
-      };
+      .message.me {
+        text-align: right;
+        color: cyan;
+      }
 
-      socket.onerror = function (error) {
-        logDebug(`❌ WebSocket Error: ${error.message}`);
-      };
+      .message.partner {
+        text-align: left;
+        color: orange;
+      }
+    </style>
+  </head>
 
-      socket.onclose = function () {
-        logDebug("⚠️ WebSocket connection closed. Reconnecting...");
-        setTimeout(connectWebSocket, 3000);
-      };
-    }
+  <body>
+    <div class="chat-container">
+      <h2>Glassy Chat</h2>
+      <div id="messages"></div>
+      <div class="input-container">
+        <input id="messageInput" type="text" placeholder="Type a message..." />
+        <button id="sendButton">Send</button>
+      </div>
+      <button id="newChatButton">New Chat</button>
+      <button id="nextButton">Next</button>
+    </div>
 
-    connectWebSocket();
+    <script>
+      let socket;
 
-    document.getElementById("sendButton").onclick = function () {
-      sendMessage();
-    };
+      function connectWebSocket() {
+        socket = new WebSocket("ws://localhost:8080/ws");
 
-    document
-      .getElementById("messageInput")
-      .addEventListener("keypress", function (event) {
-        if (event.key === "Enter") {
-          sendMessage();
+        socket.onmessage = function (event) {
+          appendMessage("partner", event.data);
+        };
+
+        socket.onopen = function () {
+          console.log("Connected to WebSocket");
+        };
+
+        socket.onclose = function () {
+          console.log("Disconnected");
+        };
+      }
+
+      function appendMessage(sender, message) {
+        const messagesDiv = document.getElementById("messages");
+        const msgElement = document.createElement("div");
+        msgElement.className = `message ${sender}`;
+        msgElement.textContent =
+          sender === "me" ? `Me: ${message}` : `Partner: ${message}`;
+        messagesDiv.appendChild(msgElement);
+        messagesDiv.scrollTop = messagesDiv.scrollHeight;
+      }
+
+      document.getElementById("sendButton").onclick = function () {
+        const input = document.getElementById("messageInput");
+        const message = input.value.trim();
+        if (message) {
+          socket.send(message);
+          appendMessage("me", message);
+          input.value = "";
         }
-      });
+      };
 
-    document.getElementById("resetButton").onclick = function () {
-      document.getElementById("messages").value = "";
-      document.getElementById("messageInput").value = "";
-      logDebug("🔄 Chat reset.");
-    };
+      document.getElementById("newChatButton").onclick = function () {
+        document.getElementById("messages").innerHTML = "";
+      };
 
-    document.getElementById("disconnectButton").onclick = function () {
-      if (socket) {
+      document.getElementById("nextButton").onclick = function () {
         socket.close();
-        logDebug("🔌 WebSocket manually disconnected.");
-      }
-    };
+        connectWebSocket();
+      };
 
-    document.getElementById("debugButton").onclick = function () {
-      debugMode = !debugMode;
-      alert(`Debug Mode: ${debugMode ? "ON" : "OFF"}`);
-    };
-
-    function sendMessage() {
-      const messageInput = document.getElementById("messageInput");
-      const message = messageInput.value.trim();
-
-      if (message) {
-        socket.send(message);
-        logDebug(`📤 Sent message: ${message}`);
-        messageInput.value = "";
-      }
-    }
-
-    function logDebug(message) {
-      if (debugMode) {
-        console.log(message);
-      }
-    }
-  </script>
-</body>
-
+      connectWebSocket();
+    </script>
+  </body>
 </html>
