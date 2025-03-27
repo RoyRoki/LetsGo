@@ -44,11 +44,6 @@ func (r *RedisChatRepository) SaveChatSession(ctx context.Context, chat *entity.
 		log.Printf("Error storing chat session: %v", err)
 		return err
 	}
-
-	// Store chat ID references for users
-	r.client.Set(ctx, fmt.Sprintf("chat:%s", chat.UserA.UserID), chat.ID, 0)
-	r.client.Set(ctx, fmt.Sprintf("chat:%s", chat.UserB.UserID), chat.ID, 0)
-
 	log.Printf("Chat session started: %s <-> %s", chat.UserA.UserID, chat.UserB.UserID)
 	return nil
 }
@@ -92,18 +87,8 @@ func (r *RedisChatRepository) GetChatPartner(ctx context.Context, chatID, userID
 func (r *RedisChatRepository) DeleteChatSession(ctx context.Context, chatID string) error {
 	chatKey := fmt.Sprintf("chat:%s", chatID)
 
-	// Retrieve chat before deletion to remove user mappings
-	chat, err := r.GetChatSession(ctx, chatID)
-	if err != nil {
-		return err
-	}
-
-	// Delete user-chat mappings
-	r.client.Del(ctx, fmt.Sprintf("chat:%s", chat.UserA.UserID))
-	r.client.Del(ctx, fmt.Sprintf("chat:%s", chat.UserB.UserID))
-
-	// Delete chat session
-	err = r.client.Del(ctx, chatKey).Err()
+		// Delete chat session
+	err := r.client.Del(ctx, chatKey).Err()
 	if err != nil {
 		log.Printf("Error deleting chat session: %v", err)
 		return err

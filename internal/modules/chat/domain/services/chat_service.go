@@ -23,7 +23,13 @@ func NewChatService(chatRepo repository.ChatRepository, userRepo repository.User
 
 // GetChatPartner retrieves the chat partner of a user
 func (s *ChatService) GetChatPartner(ctx context.Context, userID string) (*entity.User, error) {
-	chat, err := s.chatRepo.GetChatSession(ctx, userID)
+	user, err := s.userRepo.GetUser(ctx, userID)
+	if err != nil {
+		log.Printf("Error retrieving user for user id %s\n", userID)
+		return nil, err;
+	}
+
+	chat, err := s.chatRepo.GetChatSession(ctx, user.ChatID)
 	if err != nil {
 		log.Printf("Error retrieving chat session for user %s: %v", userID, err)
 		return nil, err
@@ -37,26 +43,33 @@ func (s *ChatService) GetChatPartner(ctx context.Context, userID string) (*entit
 
 // EndChatSession removes a chat session and re-adds users to the queue
 func (s *ChatService) EndChatSession(ctx context.Context, userID string) error {
-	chat, err := s.chatRepo.GetChatSession(ctx, userID)
+	user, err := s.userRepo.GetUser(ctx, userID)
+	chat, err := s.chatRepo.GetChatSession(ctx, user.ChatID)
 	if err != nil {
-		log.Printf("Error retrieving chat session: %v", err)
+		log.Printf("Error retrieving chat session for delete: %v", err)
 		return err
 	}
 
 	// Send message for disconnect 
-	s.wsRepo.SendMessage(chat.UserA.UserID, []byte("Chat Ended!!"))
-	s.wsRepo.SendMessage(chat.UserB.UserID, []byte("Chat Ended!!"))
-
-	// Remove chat session
+	if chat.UserA.UserID != userID {
+		err = s.wsRepo.SendMessage(chat.UserA.UserID, []byte("Wait for new partner..."))
+		if err == nil {	
+			s.userRepo.AddUserToQueue(ctx, chat.UserA)
+		}
+	} else {
+		err = s.wsRepo.SendMessage(chat.UserB.UserID, []byte("Wait for new partner..."))
+		if err == nil {	
+			s.userRepo.AddUserToQueue(ctx, chat.UserB)
+		}
+	}
+	
 	err = s.chatRepo.DeleteChatSession(ctx, chat.ID)
 	if err != nil {
 		log.Printf("Error deleting chat session: %v", err)
 		return err
 	}
-
-	// Re-add users to waiting queue
-	s.userRepo.AddUserToQueue(ctx, chat.UserA)
-	s.userRepo.AddUserToQueue(ctx, chat.UserB)
+	s.wsRepo.RemoveConnection(userID)
+	s.userRepo.RemoveUser(ctx, userID)
 
 	log.Printf("Chat session")
 	return nil
@@ -86,33 +99,6 @@ func (s *ChatService) CreateChatSession(ctx context.Context, chat *entity.Chat) 
 	return nil
 }
 
-// ForwardMessage forwards a message to the chat partner
-func (s *ChatService) ForwardMessage(senderID string, message []byte) error {
-	ctx := context.Background()
-
-	user, err := s.userRepo.GetUser(ctx, senderID);
-
-	// Retrieve chat session
-	chat, err := s.chatRepo.GetChatSession(ctx, user.ChatID)
-	if err != nil {
-		log.Printf("⚠️ Error retrieving chat session for user %s: %v", user.UserID, err)
-		return err
-	}
-
-	// Determine recipient
-	recipientID := chat.UserA.UserID
-	if chat.UserA.UserID == user.ChatID {
-		recipientID = chat.UserB.UserID
-	}
-
-	// Use WebSocketRepository instead of direct WebSocketHub access
-	err = s.wsRepo.SendMessage(recipientID, message)
-	if err != nil {
-		log.Printf("⚠️ Error sending message to %s: %v", recipientID, err)
-	}
-	return err
-}
-
 // ListenFromConnection listens for messages from a connected user
 func (s *ChatService) ListenFromConnection(userID string) {
 	ctx := context.Background()
@@ -120,7 +106,7 @@ func (s *ChatService) ListenFromConnection(userID string) {
 	ws := s.wsRepo.GetConnection(userID)
 	if ws == nil {
 		log.Printf("⚠️ No active WebSocket connection for user %s", userID)
-		return // Prevent further execution
+		return
 	}
 	user, err := s.userRepo.GetUser(ctx, userID)
 	if err != nil {
@@ -129,7 +115,7 @@ func (s *ChatService) ListenFromConnection(userID string) {
 	partner, err := s.chatRepo.GetChatPartner(ctx, user.ChatID, user.UserID)
 
 	defer func() {
-		message := "You are Disconnected."
+		message := "Your partner is disconnected."
 		err := s.wsRepo.SendMessage(partner.UserID, []byte(message))
 
 		if err != nil {
@@ -145,16 +131,21 @@ func (s *ChatService) ListenFromConnection(userID string) {
 		// Read incoming message
 		_, message, err := ws.ReadMessage()
 		if err != nil {
-			s.wsRepo.SendMessage(userID, []byte("Server Failed!"))
+			s.wsRepo.SendMessage(partner.UserID, []byte("Partner Connection failed!"))
 			log.Printf("⚠️ Error reading message from %s: %v", userID, err)
 			break // Exit loop on error (disconnect)
 		}
 
 		log.Printf("📩 Received message from %s: %s", userID, string(message))
 
-		// ✅ Forward the message to the user's chat partner
-		err = s.wsRepo.SendMessage(partner.UserID, message)
+		// Forward the message to the user's chat partner
+		sendTo, err := s.GetChatPartner(ctx, userID)
 		if err != nil {
+			log.Printf("Failed to get the partner for forwarding message")
+		}
+		err = s.wsRepo.SendMessage(sendTo.UserID, message)
+		if err != nil {
+			s.wsRepo.SendMessage(userID, []byte("Server Failed!"))
 			log.Printf("⚠️ Error forwarding message: %v", err)
 			break
 		}

@@ -83,7 +83,6 @@ func main() {
 
 	// Stop background worker
 	chatWorker.Stop() 
-
 	// Gracefully shutdown the HTTP server
 	if err := server.Shutdown(ctx); err != nil {
 		log.Fatalf("❌ HTTP Server Shutdown Failed: %v", err)
@@ -91,6 +90,11 @@ func main() {
 
 	// Stop WebSocket connections
 	wsHub.Shutdown() // Implement a `Shutdown` method in `WebSocketHub` to clean connections.
+
+	if err = redisClient.Del(ctx, "waiting_queue").Err(); err != nil {
+		log.Println("Failed to clear waiting_queue")
+	}
+	log.Println("waiting_queue deleted")
 
 	// Close Redis connection
 	if err := redisClient.Close(); err != nil {

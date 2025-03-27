@@ -33,26 +33,25 @@ func (w *MatchmakingWorker) Run() {
 		select {
 		case <-w.stopChan:
 			log.Println("🛑 Matchmaking Worker Stopped.")
-			break
+			return;
 			
 		default:
 			ctx := context.Background()
 
-			// ✅ Step 1: Check if at least 2 users exist before popping
+			// Check if at least 2 users exist before popping
 			userCount, err := w.userRepo.GetQueueLength(ctx)
 			if err != nil {
 				log.Printf("❌ Error checking queue length: %v", err)
 				time.Sleep(5 * time.Second)
 				continue
-			}
-
+			}		
 			if userCount < 2 {
 				log.Println("⚠️ Not enough users in queue, waiting...")
 				time.Sleep(5 * time.Second)
 				continue
 			}
 
-			// ✅ Step 2: Pop exactly 2 users
+			// Pop exactly 2 users
 			users, err := w.userRepo.PopTopUsers(ctx, 2)
 			if err != nil || len(users) != 2 {
 				log.Printf("❌ Error retrieving users from queue: %v", err)
@@ -60,7 +59,7 @@ func (w *MatchmakingWorker) Run() {
 				continue
 			}
 
-			// ✅ Step 3: Pair users
+			// Pair users
 			userA, userB := users[0], users[1]
 
 			if err := w.chatUsecase.HandleChatPair(ctx, userA, userB); err != nil {
@@ -72,7 +71,7 @@ func (w *MatchmakingWorker) Run() {
 			w.chatUsecase.ListenFromConnection(userA.UserID)
 			w.chatUsecase.ListenFromConnection(userB.UserID)
 
-			// ✅ Step 4: Sleep before next matchmaking check
+			// Sleep before next matchmaking check
 			time.Sleep(5 * time.Second)
 		}
 	}

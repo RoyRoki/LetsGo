@@ -37,6 +37,7 @@ func (c *ChatUseCase) HandleNewConnection(ctx context.Context, userId string) er
 	// Create a User entity
 	user := entity.User{
 		UserID:   userId,
+		ChatID: "",
 		JoinTime: time.Now(),
 		Chatted:  0,
 	}
@@ -62,12 +63,6 @@ func (c *ChatUseCase) HandleChatPair(ctx context.Context, userA, userB entity.Us
 		StartTime: time.Now(),
 	}
 
-	// Save chat session
-	err := c.chatService.CreateChatSession(ctx, &chat)
-	if err != nil {
-		log.Printf("Error saving chat session: %v", err)
-		return err
-	}
 
 	if err := c.chatService.UpdateUserChatID(ctx, userA.UserID, chat.ID); err != nil {
 		log.Printf("❌ Error updating ChatID for user %s: %v", userA.UserID, err)
@@ -78,6 +73,12 @@ func (c *ChatUseCase) HandleChatPair(ctx context.Context, userA, userB entity.Us
 		return err
 	}
 
+	// Save chat session
+	err := c.chatService.CreateChatSession(ctx, &chat)
+	if err != nil {
+		log.Printf("Error saving chat session: %v", err)
+		return err
+	}
 	log.Printf("✅ Chat session started: %s <-> %s (ChatID: %s)", userA.UserID, userB.UserID, chat.ID)
 	return nil
 }

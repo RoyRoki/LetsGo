@@ -15,7 +15,7 @@ type WebSocketHub struct {
 	mu    sync.Mutex // Protects concurrent access
 }
 
-// ✅ Ensure WebSocketHub implements WebSocketRepository
+// Ensure WebSocketHub implements WebSocketRepository
 var _ repository.WebSocketRepository = &WebSocketHub{}
 
 // NewWebSocketHub initializes WebSocketHub
@@ -54,7 +54,7 @@ func (h *WebSocketHub) GetConnection(userID string) *websocket.Conn {
 	return conn
 }
 
-// ✅ SendMessage sends a message to a connected user
+// SendMessage sends a message to a connected user
 func (h *WebSocketHub) SendMessage(userID string, message []byte) error {
 	h.mu.Lock()
 	defer h.mu.Unlock()
@@ -66,7 +66,6 @@ func (h *WebSocketHub) SendMessage(userID string, message []byte) error {
 
 	err := conn.WriteMessage(websocket.TextMessage, message)
 	if err != nil {
-		h.RemoveConnection(userID) // Remove if connection is broken
 		return fmt.Errorf("error sending message to %s: %v", userID, err)
 	}
 	return nil
