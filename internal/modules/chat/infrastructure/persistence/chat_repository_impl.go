@@ -12,17 +12,17 @@ import (
 )
 
 // RedisChatRepository handles chat session storage in Redis
-type RedisChatRepository struct {
+type ChatRepository struct {
 	client *redis.Client
 }
 
 // NewRedisChatRepository initializes a new RedisChatRepository
 func NewChatRepository(client *redis.Client) repository.ChatRepository {
-	return &RedisChatRepository{client: client}
+	return &ChatRepository{client: client}
 }
 
 // SaveChatSession stores a chat session in Redis
-func (r *RedisChatRepository) SaveChatSession(ctx context.Context, chat *entity.Chat) error {
+func (r *ChatRepository) SaveChatSession(ctx context.Context, chat *entity.Chat) error {
 	chatKey := fmt.Sprintf("chat:%s", chat.ID)
 
 	// Convert chat struct to JSON
@@ -49,7 +49,7 @@ func (r *RedisChatRepository) SaveChatSession(ctx context.Context, chat *entity.
 }
 
 // GetChatSession retrieves a chat session from Redis
-func (r *RedisChatRepository) GetChatSession(ctx context.Context, chatID string) (*entity.Chat, error) {
+func (r *ChatRepository) GetChatSession(ctx context.Context, chatID string) (*entity.Chat, error) {
 	chatKey := fmt.Sprintf("chat:%s", chatID)
 
 	// Retrieve chat data from Redis
@@ -69,7 +69,7 @@ func (r *RedisChatRepository) GetChatSession(ctx context.Context, chatID string)
 }
 
 // GetChatPartner retrieves the chat partner for a user
-func (r *RedisChatRepository) GetChatPartner(ctx context.Context, chatID, userID string) (*entity.User, error) {
+func (r *ChatRepository) GetChatPartner(ctx context.Context, chatID, userID string) (*entity.User, error) {
 	// Retrieve the chat session
 	chat, err := r.GetChatSession(ctx, chatID)
 	if err != nil {
@@ -84,7 +84,7 @@ func (r *RedisChatRepository) GetChatPartner(ctx context.Context, chatID, userID
 }
 
 // DeleteChatSession removes a chat session from Redis
-func (r *RedisChatRepository) DeleteChatSession(ctx context.Context, chatID string) error {
+func (r *ChatRepository) DeleteChatSession(ctx context.Context, chatID string) error {
 	chatKey := fmt.Sprintf("chat:%s", chatID)
 
 		// Delete chat session
@@ -95,4 +95,34 @@ func (r *RedisChatRepository) DeleteChatSession(ctx context.Context, chatID stri
 	}
 	log.Printf("Chat session deleted: %s", chatID)
 	return nil
+}
+
+
+
+// SubscribeToChatUpdates listens for partner changes in Redis.
+func (r *ChatRepository) SubscribeToChatUpdates(ctx context.Context, userID string) <-chan *entity.User {
+	channel := "chat_updates:" + userID
+	sub := r.client.Subscribe(ctx, channel)
+
+	updates := make(chan *entity.User, 1) // Buffered to prevent blocking
+
+	go func() {
+		defer sub.Close()
+		for msg := range sub.Channel() {
+			partner := &entity.User{UserID: msg.Payload}
+			updates <- partner
+		}
+		close(updates) // Close when subscription ends
+	}()
+
+	return updates
+}
+
+// NotifyPartnerUpdate publishes a new chat partner to Redis.
+func (r *ChatRepository) NotifyPartnerUpdate(ctx context.Context, userID string, partner *entity.User) {
+	channel := "chat_updates:" + userID
+	err := r.client.Publish(ctx, channel, partner.UserID).Err()
+	if err != nil {
+		log.Printf("❌ Redis publish failed for %s: %v", userID, err)
+	}
 }

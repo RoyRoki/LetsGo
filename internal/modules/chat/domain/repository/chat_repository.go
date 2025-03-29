@@ -19,4 +19,10 @@ type ChatRepository interface {
 
 	// Delete a chat session from storage
 	DeleteChatSession(ctx context.Context, chatID string) error
+
+	// Subcribe for chat updates
+	SubscribeToChatUpdates(ctx context.Context, userID string) <-chan *entity.User 
+
+	// Notify the chat updates
+	NotifyPartnerUpdate(ctx context.Context, userID string, partner *entity.User)
 }
