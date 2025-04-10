@@ -21,7 +21,7 @@ type ChatRepository interface {
 	DeleteChatSession(ctx context.Context, chatID string) error
 
 	// Subcribe for chat updates
-	SubscribeToChatUpdates(ctx context.Context, userID string) <-chan *entity.User 
+	SubscribeToChatUpdates(ctx context.Context, userID string) <-chan *entity.User
 
 	// Notify the chat updates
 	NotifyPartnerUpdate(ctx context.Context, userID string, partner *entity.User)
