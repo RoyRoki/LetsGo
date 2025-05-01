@@ -1,0 +1,28 @@
+version: "3.8"
+
+services:
+  redis:
+    image: redis:7-alpine
+    container_name: matching-redis
+    ports:
+      - "6379:6379"
+    command: ["redis-server", "--requirepass", "redis@123"]
+    volumes:
+      - redis_data:/data
+
+  matching-service:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: matching-service
+    depends_on:
+      - redis
+    environment:
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - REDIS_PASS=redis@123
+    ports:
+      - "8080:8080"
+
+volumes:
+  redis_data:
