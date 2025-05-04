@@ -6,7 +6,7 @@ import (
 	"os"
 
 	"github.com/redis/go-redis/v9"
-	"github.com/royroki/matching-service/internal/constants"
+	"github.com/royroki/letsgo/services/matching-service/internal/constants"
 )
 
 var (
@@ -30,5 +30,5 @@ func InitRedis() {
 		log.Printf("Failed to connect to Redis: %v", err)
 	}
 
-	log.Println("✅ Redis connected")
+	log.Printf("✅ Redis connected: %s", redisAddr)
 }

@@ -3,7 +3,7 @@ package redis
 import (
 	"fmt"
 
-	"github.com/royroki/matching-service/internal/domain"
+	"github.com/royroki/letsgo/services/matching-service/internal/domain"
 )
 
 func getKey(module, tag string) string {

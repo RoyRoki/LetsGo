@@ -1,5 +1,7 @@
 package domain
 
+import "context"
+
 type MatchRequest struct {
 	UserID int32
 	Tags   []string
@@ -12,5 +14,5 @@ type MatchResult struct {
 }
 
 type Matcher interface {
-	Match(req MatchRequest) (res MatchRequest, err error)
+	Match(ctx context.Context, req MatchRequest) (res MatchRequest, err error)
 }

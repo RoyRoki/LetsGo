@@ -6,9 +6,9 @@ services:
     container_name: matching-redis
     ports:
       - "6379:6379"
-    command: ["redis-server", "--requirepass", "redis@123"]
+    command: ["redis-server", "--requirepass", "${REDIS_PASS}"]
     volumes:
-      - redis_data:/data
+      - redis_data:/data1
 
   matching-service:
     build:
@@ -17,12 +17,15 @@ services:
     container_name: matching-service
     depends_on:
       - redis
+    env_file:
+      - ./.env
     environment:
-      - REDIS_HOST=redis
-      - REDIS_PORT=6379
-      - REDIS_PASS=redis@123
+      - REDIS_HOST=${REDIS_HOST}
+      - REDIS_PORT=${REDIS_PORT}
+      - REDIS_PASS=${REDIS_PASS}
+      - GRPC_PORT=${GRPC_PORT}
     ports:
-      - "8080:8080"
+      - "${GRPC_PORT}:${GRPC_PORT}"
 
 volumes:
   redis_data:

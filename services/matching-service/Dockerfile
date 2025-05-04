@@ -1,4 +1,3 @@
-
 # Build stage
 FROM golang:1.24.1-alpine AS builder
 
@@ -8,8 +7,9 @@ WORKDIR /app
 COPY go.mod go.sum ./
 RUN go mod download
 
-# Copy source
+# Copy source and .env
 COPY . .
+COPY .env .env
 
 # Build the binary
 RUN CGO_ENABLED=0 GOOS=linux go build -o matching-service ./cmd/server
@@ -19,15 +19,19 @@ FROM alpine:latest
 
 WORKDIR /root/
 
+# Add non-root user
+RUN adduser -D appuser
+
 # Copy the binary from builder
 COPY --from=builder /app/matching-service .
 
-# Add non-root user (optional but secure)
-RUN adduser -D appuser
+# Copy the .env file from builder and set permissions
+COPY --from=builder /app/.env .env
+RUN chown appuser:appuser .env && chmod 644 .env
+
+# Switch to non-root user
 USER appuser
 
-# Expose port (if needed for metrics or HTTP)
 EXPOSE 8080
-
-# Run the service
 CMD ["./matching-service"]
+

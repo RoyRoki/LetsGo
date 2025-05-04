@@ -2,10 +2,11 @@ package config
 
 import (
 	"fmt"
+	"log"
 	"os"
 	"sync"
 
-	"github.com/royroki/matching-service/internal/constants"
+	"github.com/royroki/letsgo/services/matching-service/internal/constants"
 )
 
 type Config struct {
@@ -23,15 +24,11 @@ var (
 
 func LoadConfig() *Config {
 	once.Do(func() {
-		// Load .env file
-		// if err := godotenv.Load(); err != nil {
-		// 	log.Println("⚠️ No .env file found, using system environment variables")
-		// }
 		cfg = &Config{
 			RedisHost:     getEnv(constants.RedisHost, "redis"),
 			RedisPort:     getEnv(constants.RedisPort, "6379"),
-			RedisPassword: getEnv("REDIS_PASSWORD", ""),
-			GRPCPort:      getEnv("GRPC_PORT", "50051"),
+			RedisPassword: getEnv(constants.RedisPass, "redis@123"),
+			GRPCPort:      getEnv(constants.GRPCPORT, "9090"),
 			MatchTimeout:  getEnvAsInt("MATCH_TIMEOUT_SECONDS", 30),
 		}
 	})
@@ -40,6 +37,7 @@ func LoadConfig() *Config {
 
 func getEnv(key, fallback string) string {
 	if value, exists := os.LookupEnv(key); exists {
+		log.Printf("ENV: %s = %s\n", key, value)
 		return value
 	}
 	return fallback
