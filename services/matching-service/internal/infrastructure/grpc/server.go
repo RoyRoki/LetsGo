@@ -40,6 +40,7 @@ func (s *gRPCServer) MatchUser(ctx context.Context, req *pb.MatchRequest) (*pb.M
 		Module: req.Module,
 		Tags:   req.Tags,
 	})
+	log.Printf("Match User Called %s, %b", result.PartnerID, result.Matched)
 	if err != nil {
 		return nil, err
 	}

@@ -1,8 +1,41 @@
 package lua
 
-import "github.com/royroki/letsgo/services/matching-service/internal/domain"
+import (
+	_ "embed"
+	"fmt"
+
+	Redis "github.com/redis/go-redis/v9"
+	"github.com/royroki/letsgo/services/matching-service/internal/domain"
+	"github.com/royroki/letsgo/services/matching-service/internal/infrastructure/redis"
+)
+
+//go:embed match_user.lua
+var matchUserScript string
+
+var matchUserRedisScript = Redis.NewScript(matchUserScript)
 
 func MatchUser(req domain.MatchRequest) (domain.MatchResult, error) {
-	// Placeholder: In final version this will call a Lua script.
-	return domain.MatchResult{Matched: false}, nil
+	// Prepare Redis KEYS (bitmap keys for each tag)
+	keys := make([]string, len(req.Tags))
+	for i, tag := range req.Tags {
+		keys[i] = fmt.Sprintf("waiting:%s:%s", req.Module, tag)
+	}
+
+	// Cap scan to 4294 million or 2 `32` userIDs
+	const maxScan = 4294_97_000
+
+	// Run Lua script
+	res, err := matchUserRedisScript.Run(redis.Ctx, redis.Rdb, keys, req.UserID, maxScan).Int()
+	if err != nil {
+		return domain.MatchResult{Matched: false}, err
+	}
+
+	if res == -1 {
+		return domain.MatchResult{Matched: false}, nil
+	}
+
+	return domain.MatchResult{
+		Matched:   true,
+		PartnerID: int32(res),
+	}, nil
 }
