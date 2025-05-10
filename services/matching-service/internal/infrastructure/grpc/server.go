@@ -9,6 +9,7 @@ import (
 	"github.com/royroki/letsgo/services/matching-service/internal/app/usecases"
 	"github.com/royroki/letsgo/services/matching-service/internal/constants"
 	"github.com/royroki/letsgo/services/matching-service/internal/domain"
+	"github.com/royroki/letsgo/services/matching-service/internal/infrastructure/redis"
 	pb "github.com/royroki/letsgo/services/matching-service/proto/matching"
 	"google.golang.org/grpc"
 )
@@ -35,12 +36,21 @@ func NewGRPCServer() {
 }
 
 func (s *gRPCServer) MatchUser(ctx context.Context, req *pb.MatchRequest) (*pb.MatchResponse, error) {
+	if len(req.Tags) <= 0 {
+		partnerID, isMatched := redis.FifoMatch(req.Module, int32(req.UserId))
+		log.Printf("User %d matched via FIFO with partner %d", req.UserId, partnerID)
+		return &pb.MatchResponse{
+			PartnerId: int64(partnerID),
+			Matched:   isMatched,
+		}, nil
+
+	}
 	result, err := s.usecase.TryMatch(ctx, domain.MatchRequest{
 		UserID: int32(req.UserId),
 		Module: req.Module,
 		Tags:   req.Tags,
 	})
-	log.Printf("Match User Called %s, %b", result.PartnerID, result.Matched)
+	log.Printf("Match result for user %d: Matched=%v, PartnerID=%d", req.UserId, result.Matched, result.PartnerID)
 	if err != nil {
 		return nil, err
 	}
