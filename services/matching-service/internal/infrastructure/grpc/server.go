@@ -6,11 +6,11 @@ import (
 	"net"
 	"os"
 
+	pb "github.com/royroki/letsgo/proto/matching"
 	"github.com/royroki/letsgo/services/matching-service/internal/app/usecases"
 	"github.com/royroki/letsgo/services/matching-service/internal/constants"
 	"github.com/royroki/letsgo/services/matching-service/internal/domain"
 	"github.com/royroki/letsgo/services/matching-service/internal/infrastructure/redis"
-	pb "github.com/royroki/letsgo/services/matching-service/proto/matching"
 	"google.golang.org/grpc"
 )
 

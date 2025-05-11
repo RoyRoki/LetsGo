@@ -1,0 +1,42 @@
+version: "3.8"
+
+services:
+  redis:
+    image: redis:7-alpine
+    container_name: redis
+    ports:
+      - "6379:6379"
+    command: ["redis-server", "--requirepass", "${REDIS_PASS}"]
+    volumes:
+      - redis_data:/data
+
+  matching-service:
+    build:
+      context: .
+    container_name: matching-service
+    depends_on:
+      - redis
+    env_file:
+      - .env
+    ports:
+      - "${GRPC_PORT}:${GRPC_PORT}"
+
+  chatting-service:
+    build:
+      context: ./services/chatting-service
+    container_name: chatting-service
+    depends_on:
+      - matching-service
+    env_file:
+      - .env
+    ports:
+      - "8080:8080"
+    environment:
+      - MATCHING_GRPC_HOST=matching-service
+      - MATCHING_GRPC_PORT=${GRPC_PORT}
+      - REDIS_HOST=${REDIS_HOST}
+      - REDIS_PORT=${REDIS_PORT}
+      - REDIS_PASS=${REDIS_PASS}
+
+volumes:
+  redis_data:
