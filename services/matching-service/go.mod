@@ -10,7 +10,9 @@ require (
 
 require github.com/royroki/letsgo/proto v0.0.0
 
-replace github.com/royroki/letsgo/proto => ../../proto
+// replace github.com/royroki/letsgo/proto => ../../proto
+replace github.com/royroki/letsgo/proto => /app/proto
+
 
 require (
 	github.com/cespare/xxhash/v2 v2.3.0 // indirect

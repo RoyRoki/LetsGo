@@ -1,16 +1,11 @@
 package entity
 
-type User struct {
-	ID      int32
-	Conn    WebSocketConn
-	IP      string
-	Tags    []string
-	Module  string
-	partner *User // nil if not matched
-}
+import "github.com/gorilla/websocket"
 
-type WebSocketConn interface {
-	WriteJSON(v interface{}) error
-	ReadJSON(v interface{}) error
-	Close() error
+type User struct {
+	ID     int64
+	Conn   *websocket.Conn
+	IP     string
+	Tags   []string
+	Module string
 }

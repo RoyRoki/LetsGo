@@ -6,7 +6,7 @@ import (
 	"os"
 
 	"github.com/redis/go-redis/v9"
-	"github.com/royroki/letsgo/services/matching-service/internal/constants"
+	"github.com/royroki/services/chatting-service/internal/constants"
 )
 
 var (

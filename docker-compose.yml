@@ -13,6 +13,7 @@ services:
   matching-service:
     build:
       context: .
+      dockerfile: services/matching-service/Dockerfile
     container_name: matching-service
     depends_on:
       - redis
@@ -23,7 +24,8 @@ services:
 
   chatting-service:
     build:
-      context: ./services/chatting-service
+      context: .
+      dockerfile: services/chatting-service/Dockerfile
     container_name: chatting-service
     depends_on:
       - matching-service

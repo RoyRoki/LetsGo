@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <title>Chatting Service WebSocket Test</title>
+</head>
+
+<body>
+    <h2>Chat Matching WebSocket Test</h2>
+
+    <label for="tags">Enter tags (comma-separated):</label>
+    <input type="text" id="tags" placeholder="e.g. gaming,music" />
+    <button onclick="connect()">Connect & Match</button>
+
+    <pre id="log" style="margin-top: 20px; background: #f0f0f0; padding: 1rem"></pre>
+
+    <script>
+        let socket;
+
+        function connect() {
+            const tagsInput = document.getElementById("tags").value;
+            const tags = tagsInput
+                .split(",")
+                .map((tag) => tag.trim())
+                .filter((tag) => tag.length > 0);
+
+            // Connect to your WebSocket server
+            socket = new WebSocket("ws://localhost:8080/ws/chat");
+
+            socket.onopen = () => {
+                log("✅ Connected to WebSocket.");
+
+                const payload = {
+                    tags: tags,
+                };
+
+                log("📤 Sending tags: " + JSON.stringify(payload));
+                socket.send(JSON.stringify(payload));
+            };
+
+            socket.onmessage = (event) => {
+                log("📩 Message from server: " + event.data);
+            };
+
+            socket.onerror = (err) => {
+                log("❌ WebSocket error: " + err.message);
+            };
+
+            socket.onclose = () => {
+                log("🔌 Connection closed.");
+            };
+        }
+
+        function log(message) {
+            const logEl = document.getElementById("log");
+            logEl.textContent += message + "\n";
+        }
+    </script>
+</body>
+
+</html>
