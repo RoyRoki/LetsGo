@@ -13,34 +13,62 @@
     <input type="text" id="tags" placeholder="e.g. gaming,music" />
     <button onclick="connect()">Connect & Match</button>
 
+    <div style="margin-top: 20px;">
+        <div id="chatBox"
+            style="background: #f9f9f9; padding: 1rem; height: 200px; overflow-y: auto; border: 1px solid #ccc;"></div>
+        <input type="text" id="messageInput" placeholder="Type a message..."
+            onkeydown="if(event.key === 'Enter') sendMessage()" />
+        <button onclick="sendMessage()">Send</button>
+    </div>
+
     <pre id="log" style="margin-top: 20px; background: #f0f0f0; padding: 1rem"></pre>
 
     <script>
         let socket;
+        let tagPayload = null;
 
         function connect() {
             const tagsInput = document.getElementById("tags").value;
             const tags = tagsInput
                 .split(",")
-                .map((tag) => tag.trim())
-                .filter((tag) => tag.length > 0);
+                .map(tag => tag.trim())
+                .filter(tag => tag.length > 0);
 
-            // Connect to your WebSocket server
+            tagPayload = { tags };
+
             socket = new WebSocket("ws://localhost:8080/ws/chat");
 
             socket.onopen = () => {
                 log("✅ Connected to WebSocket.");
-
-                const payload = {
-                    tags: tags,
-                };
-
-                log("📤 Sending tags: " + JSON.stringify(payload));
-                socket.send(JSON.stringify(payload));
+                if (tagPayload) {
+                    log("📤 Sending tags: " + JSON.stringify(tagPayload));
+                    socket.send(JSON.stringify(tagPayload));
+                }
             };
 
             socket.onmessage = (event) => {
-                log("📩 Message from server: " + event.data);
+                try {
+                    const data = JSON.parse(event.data);
+                    log(JSON.stringify(data))
+
+                    switch (data.status) {
+                        case "904":
+                            displayMessage("🗨️ Partner: " + data.content);
+                            break;
+                        case "905":
+                            displayMessage("⚙️ System: " + data.content);
+                            break;
+                        case "902":
+                            log("✅ " + data.content);
+                            break;
+                        default:
+                            log("ℹ️ [" + (data.status || "") + "] " + data.content);
+                            break;
+                    }
+
+                } catch (err) {
+                    log("❌ Failed to parse message: " + err.message);
+                }
             };
 
             socket.onerror = (err) => {
@@ -50,6 +78,23 @@
             socket.onclose = () => {
                 log("🔌 Connection closed.");
             };
+        }
+
+        function sendMessage() {
+            const input = document.getElementById("messageInput");
+            const msg = input.value.trim();
+            if (msg && socket && socket.readyState === WebSocket.OPEN) {
+                const messagePayload = { content: msg };
+                socket.send(JSON.stringify(messagePayload));
+                displayMessage("🧑 You: " + msg);
+                input.value = "";
+            }
+        }
+
+        function displayMessage(message) {
+            const chatBox = document.getElementById("chatBox");
+            chatBox.innerHTML += `<div>${message}</div>`;
+            chatBox.scrollTop = chatBox.scrollHeight;
         }
 
         function log(message) {

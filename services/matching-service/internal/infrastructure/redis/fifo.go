@@ -5,7 +5,7 @@ import (
 	"log"
 	"strconv"
 
-	"github.com/redis/go-redis/v9"
+	redis "github.com/redis/go-redis/v9"
 )
 
 func FifoMatch(module string, userID int32) (partnerID int32, matched bool) {

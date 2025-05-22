@@ -6,7 +6,7 @@
 // versions:
 // - protoc-gen-go-grpc v1.5.1
 // - protoc             v6.30.2
-// source: proto/matching/matching.proto
+// source: matching/matching.proto
 
 // Package Name
 
@@ -21,7 +21,7 @@ import (
 
 // This is a compile-time assertion to ensure that this generated file
 // is compatible with the grpc package it is being compiled against.
-// Requires gRPC-Go v1.64.0 or later.
+// Requires gRPC-Go v1.32.0 or later.
 const _ = grpc.SupportPackageIsVersion9
 
 const (
@@ -123,5 +123,5 @@ var Matcher_ServiceDesc = grpc.ServiceDesc{
 		},
 	},
 	Streams:  []grpc.StreamDesc{},
-	Metadata: "proto/matching/matching.proto",
+	Metadata: "matching/matching.proto",
 }

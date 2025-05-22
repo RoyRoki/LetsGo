@@ -5,9 +5,9 @@ import (
 )
 
 type Message struct {
-	From      int64  `json:"from"`
+	From      int32  `json:"from"`
 	Content   string `json:"content"`
-	Timestamp int64  `json:"timestamp"`
+	Timestamp int32  `json:"timestamp"`
 	Status    string `json:"status"` // status according the source
 }
 

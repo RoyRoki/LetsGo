@@ -3,7 +3,7 @@ package entity
 import "github.com/gorilla/websocket"
 
 type User struct {
-	ID     int64
+	ID     int32
 	Conn   *websocket.Conn
 	IP     string
 	Tags   []string

@@ -4,15 +4,15 @@ import (
 	_ "embed"
 	"fmt"
 
-	Redis "github.com/redis/go-redis/v9"
+	"github.com/redis/go-redis/v9"
 	"github.com/royroki/letsgo/services/matching-service/internal/domain"
-	"github.com/royroki/letsgo/services/matching-service/internal/infrastructure/redis"
+	Redis "github.com/royroki/letsgo/services/matching-service/internal/infrastructure/redis"
 )
 
 //go:embed match_user.lua
 var matchUserScript string
 
-var matchUserRedisScript = Redis.NewScript(matchUserScript)
+var matchUserRedisScript = redis.NewScript(matchUserScript)
 
 func MatchUser(req domain.MatchRequest) (domain.MatchResult, error) {
 	// Prepare Redis KEYS (bitmap keys for each tag)
@@ -25,7 +25,7 @@ func MatchUser(req domain.MatchRequest) (domain.MatchResult, error) {
 	const maxScan = 4294_97_000
 
 	// Run Lua script
-	res, err := matchUserRedisScript.Run(redis.Ctx, redis.Rdb, keys, req.UserID, maxScan).Int()
+	res, err := matchUserRedisScript.Run(Redis.Ctx, Redis.Rdb, keys, req.UserID, maxScan).Int()
 	if err != nil {
 		return domain.MatchResult{Matched: false}, err
 	}

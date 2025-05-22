@@ -1,18 +1,12 @@
 module github.com/royroki/letsgo/services/matching-service
 
-go 1.24.1
+go 1.24.3
 
 require (
 	github.com/redis/go-redis/v9 v9.8.0
-	google.golang.org/grpc v1.72.0
-	google.golang.org/protobuf v1.36.6 // indirect
+	google.golang.org/grpc v1.72.1
+	google.golang.org/protobuf v1.36.5
 )
-
-require github.com/royroki/letsgo/proto v0.0.0
-
-// replace github.com/royroki/letsgo/proto => ../../proto
-replace github.com/royroki/letsgo/proto => /app/proto
-
 
 require (
 	github.com/cespare/xxhash/v2 v2.3.0 // indirect

@@ -1,16 +1,10 @@
 # Build stage
-FROM golang:1.24.1-alpine AS builder
+FROM golang:1.24.3-alpine AS builder
 
-WORKDIR /app
+WORKDIR /matching_server
 
 # Copy go.mod and go.sum from the matching-service directory
 COPY services/matching-service/go.mod services/matching-service/go.sum ./
-
-# Copy the proto directory from the root context into the correct location inside the container
-COPY proto /app/proto
-
-# Modify the replace path in go.mod to reflect the correct location of the proto directory
-RUN sed -i 's|../../proto|/app/proto|' go.mod
 
 RUN go mod download
 
@@ -29,7 +23,8 @@ WORKDIR /root/
 RUN adduser -D appuser
 
 # Copy the binary from the builder
-COPY --from=builder /app/matching-service .
+COPY --from=builder /matching_server/matching-service .
+
 
 # Switch to non-root user
 USER appuser

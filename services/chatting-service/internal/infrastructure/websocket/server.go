@@ -12,8 +12,8 @@ import (
 )
 
 type WCServer struct {
-	clients   map[int64]*entity.User
-	paired    map[int64]int64
+	clients   map[int32]*entity.User
+	paired    map[int32]int32
 	mu        sync.Mutex
 	sonyFlake *sonyflake.Sonyflake
 }
@@ -25,14 +25,14 @@ func NewWCServer() *WCServer {
 		log.Fatal("Failed to initialize Sonyflake")
 	}
 	return &WCServer{
-		clients:   make(map[int64]*entity.User),
-		paired:    make(map[int64]int64),
+		clients:   make(map[int32]*entity.User),
+		paired:    make(map[int32]int32),
 		sonyFlake: sf,
 	}
 }
 
 // Upgrade upgrades the HTTP connection to WebSocket and generates a unique user ID
-func (s *WCServer) Upgrade(w http.ResponseWriter, r *http.Request) (*websocket.Conn, int64, error) {
+func (s *WCServer) Upgrade(w http.ResponseWriter, r *http.Request) (*websocket.Conn, int32, error) {
 	upgrader := websocket.Upgrader{
 		CheckOrigin: func(r *http.Request) bool {
 			// Allow all origins, but we should secure this in production
@@ -52,7 +52,10 @@ func (s *WCServer) Upgrade(w http.ResponseWriter, r *http.Request) (*websocket.C
 		return nil, 0, err
 	}
 
-	return conn, int64(id), nil
+	// Use only the lower 31 bits to ensure it's always a positive int32
+	safeID := int32(id & 0x7FFFFFFF)
+	return conn, safeID, nil
+
 }
 
 // Register adds a new user to the active clients map
@@ -63,7 +66,7 @@ func (s *WCServer) Register(user *entity.User) {
 }
 
 // IsActive checks if a user is still connected by looking up in the clients map
-func (s *WCServer) IsActive(userID int64) bool {
+func (s *WCServer) IsActive(userID int32) bool {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	_, exists := s.clients[userID]
@@ -71,7 +74,7 @@ func (s *WCServer) IsActive(userID int64) bool {
 }
 
 // Get User Entity by Id
-func (s *WCServer) GetUser(userID int64) *entity.User {
+func (s *WCServer) GetUser(userID int32) *entity.User {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	user := s.clients[userID]
@@ -79,7 +82,7 @@ func (s *WCServer) GetUser(userID int64) *entity.User {
 }
 
 // Get Partner ID
-func (s *WCServer) GetPartnerID(userID int64) int64 {
+func (s *WCServer) GetPartnerID(userID int32) int32 {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
@@ -91,7 +94,7 @@ func (s *WCServer) GetPartnerID(userID int64) int64 {
 }
 
 // Send sends a message to a specific user by user ID
-func (s *WCServer) Send(userID int64, message entity.Message) {
+func (s *WCServer) Send(userID int32, message entity.Message) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	if user, ok := s.clients[userID]; ok {
@@ -105,7 +108,7 @@ func (s *WCServer) Send(userID int64, message entity.Message) {
 }
 
 // Pair connects two users by updating the paired map
-func (s *WCServer) Pair(userA, userB int64) {
+func (s *WCServer) Pair(userA, userB int32) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	s.paired[userA] = userB
@@ -113,7 +116,7 @@ func (s *WCServer) Pair(userA, userB int64) {
 }
 
 // Unregister removes a user from the clients and paired maps
-func (s *WCServer) Unregister(userID int64) {
+func (s *WCServer) Unregister(userID int32) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 

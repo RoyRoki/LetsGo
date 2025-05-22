@@ -68,7 +68,7 @@ func (cu *ChatUsecase) HandleMatchRequest(user *entity.User) {
 }
 
 // HandleDisconnect cleans up and notifies partner
-func (cu *ChatUsecase) HandleDisconnect(userID int64) {
+func (cu *ChatUsecase) HandleDisconnect(userID int32) {
 	partnerID := cu.wsServer.GetPartnerID(userID)
 
 	cu.wsServer.Unregister(userID)

@@ -5,7 +5,7 @@ import (
 	"log"
 	"time"
 
-	"github.com/royroki/letsgo/proto/matching"
+	"github.com/royroki/services/chatting-service/proto/matching"
 	"google.golang.org/grpc"
 )
 
@@ -23,7 +23,7 @@ func NewMatcherClient(address string) *MatcherClient {
 	return &MatcherClient{client: client}
 }
 
-func (mc *MatcherClient) Match(userID int64, module string, tags []string) (int64, bool, error) {
+func (mc *MatcherClient) Match(userID int32, module string, tags []string) (int32, bool, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 	defer cancel()
 

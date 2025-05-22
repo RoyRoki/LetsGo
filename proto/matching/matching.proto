@@ -6,19 +6,19 @@ syntax = "proto3";
 // Package Name
 package matching;
 
-option go_package = "github.com/royroki/letsgo/proto/matching;matching";
+option go_package = "./;matching";
  
 service Matcher {
   rpc MatchUser (MatchRequest) returns (MatchResponse);
 }
 
 message MatchRequest {
-  int64 user_id = 1;
+  int32 user_id = 1;
   string module = 2; // e.g., "chat", "call", "video"
   repeated string tags = 3; // e.g., ["gaming", "bike"]
 }
 
 message MatchResponse {
   bool matched = 1;
-  int64 partner_id = 2;
+  int32 partner_id = 2;
 }

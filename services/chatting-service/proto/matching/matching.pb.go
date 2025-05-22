@@ -6,7 +6,7 @@
 // versions:
 // 	protoc-gen-go v1.36.6
 // 	protoc        v6.30.2
-// source: proto/matching/matching.proto
+// source: matching/matching.proto
 
 // Package Name
 
@@ -29,7 +29,7 @@ const (
 
 type MatchRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	UserId        int64                  `protobuf:"varint,1,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
+	UserId        int32                  `protobuf:"varint,1,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
 	Module        string                 `protobuf:"bytes,2,opt,name=module,proto3" json:"module,omitempty"` // e.g., "chat", "call", "video"
 	Tags          []string               `protobuf:"bytes,3,rep,name=tags,proto3" json:"tags,omitempty"`     // e.g., ["gaming", "bike"]
 	unknownFields protoimpl.UnknownFields
@@ -38,7 +38,7 @@ type MatchRequest struct {
 
 func (x *MatchRequest) Reset() {
 	*x = MatchRequest{}
-	mi := &file_proto_matching_matching_proto_msgTypes[0]
+	mi := &file_matching_matching_proto_msgTypes[0]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -50,7 +50,7 @@ func (x *MatchRequest) String() string {
 func (*MatchRequest) ProtoMessage() {}
 
 func (x *MatchRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_matching_matching_proto_msgTypes[0]
+	mi := &file_matching_matching_proto_msgTypes[0]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -63,10 +63,10 @@ func (x *MatchRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use MatchRequest.ProtoReflect.Descriptor instead.
 func (*MatchRequest) Descriptor() ([]byte, []int) {
-	return file_proto_matching_matching_proto_rawDescGZIP(), []int{0}
+	return file_matching_matching_proto_rawDescGZIP(), []int{0}
 }
 
-func (x *MatchRequest) GetUserId() int64 {
+func (x *MatchRequest) GetUserId() int32 {
 	if x != nil {
 		return x.UserId
 	}
@@ -90,14 +90,14 @@ func (x *MatchRequest) GetTags() []string {
 type MatchResponse struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Matched       bool                   `protobuf:"varint,1,opt,name=matched,proto3" json:"matched,omitempty"`
-	PartnerId     int64                  `protobuf:"varint,2,opt,name=partner_id,json=partnerId,proto3" json:"partner_id,omitempty"`
+	PartnerId     int32                  `protobuf:"varint,2,opt,name=partner_id,json=partnerId,proto3" json:"partner_id,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
 func (x *MatchResponse) Reset() {
 	*x = MatchResponse{}
-	mi := &file_proto_matching_matching_proto_msgTypes[1]
+	mi := &file_matching_matching_proto_msgTypes[1]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -109,7 +109,7 @@ func (x *MatchResponse) String() string {
 func (*MatchResponse) ProtoMessage() {}
 
 func (x *MatchResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_matching_matching_proto_msgTypes[1]
+	mi := &file_matching_matching_proto_msgTypes[1]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -122,7 +122,7 @@ func (x *MatchResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use MatchResponse.ProtoReflect.Descriptor instead.
 func (*MatchResponse) Descriptor() ([]byte, []int) {
-	return file_proto_matching_matching_proto_rawDescGZIP(), []int{1}
+	return file_matching_matching_proto_rawDescGZIP(), []int{1}
 }
 
 func (x *MatchResponse) GetMatched() bool {
@@ -132,47 +132,47 @@ func (x *MatchResponse) GetMatched() bool {
 	return false
 }
 
-func (x *MatchResponse) GetPartnerId() int64 {
+func (x *MatchResponse) GetPartnerId() int32 {
 	if x != nil {
 		return x.PartnerId
 	}
 	return 0
 }
 
-var File_proto_matching_matching_proto protoreflect.FileDescriptor
+var File_matching_matching_proto protoreflect.FileDescriptor
 
-const file_proto_matching_matching_proto_rawDesc = "" +
+const file_matching_matching_proto_rawDesc = "" +
 	"\n" +
-	"\x1dproto/matching/matching.proto\x12\bmatching\"S\n" +
+	"\x17matching/matching.proto\x12\bmatching\"S\n" +
 	"\fMatchRequest\x12\x17\n" +
-	"\auser_id\x18\x01 \x01(\x03R\x06userId\x12\x16\n" +
+	"\auser_id\x18\x01 \x01(\x05R\x06userId\x12\x16\n" +
 	"\x06module\x18\x02 \x01(\tR\x06module\x12\x12\n" +
 	"\x04tags\x18\x03 \x03(\tR\x04tags\"H\n" +
 	"\rMatchResponse\x12\x18\n" +
 	"\amatched\x18\x01 \x01(\bR\amatched\x12\x1d\n" +
 	"\n" +
-	"partner_id\x18\x02 \x01(\x03R\tpartnerId2G\n" +
+	"partner_id\x18\x02 \x01(\x05R\tpartnerId2G\n" +
 	"\aMatcher\x12<\n" +
-	"\tMatchUser\x12\x16.matching.MatchRequest\x1a\x17.matching.MatchResponseB3Z1github.com/royroki/letsgo/proto/matching;matchingb\x06proto3"
+	"\tMatchUser\x12\x16.matching.MatchRequest\x1a\x17.matching.MatchResponseB\rZ\v./;matchingb\x06proto3"
 
 var (
-	file_proto_matching_matching_proto_rawDescOnce sync.Once
-	file_proto_matching_matching_proto_rawDescData []byte
+	file_matching_matching_proto_rawDescOnce sync.Once
+	file_matching_matching_proto_rawDescData []byte
 )
 
-func file_proto_matching_matching_proto_rawDescGZIP() []byte {
-	file_proto_matching_matching_proto_rawDescOnce.Do(func() {
-		file_proto_matching_matching_proto_rawDescData = protoimpl.X.CompressGZIP(unsafe.Slice(unsafe.StringData(file_proto_matching_matching_proto_rawDesc), len(file_proto_matching_matching_proto_rawDesc)))
+func file_matching_matching_proto_rawDescGZIP() []byte {
+	file_matching_matching_proto_rawDescOnce.Do(func() {
+		file_matching_matching_proto_rawDescData = protoimpl.X.CompressGZIP(unsafe.Slice(unsafe.StringData(file_matching_matching_proto_rawDesc), len(file_matching_matching_proto_rawDesc)))
 	})
-	return file_proto_matching_matching_proto_rawDescData
+	return file_matching_matching_proto_rawDescData
 }
 
-var file_proto_matching_matching_proto_msgTypes = make([]protoimpl.MessageInfo, 2)
-var file_proto_matching_matching_proto_goTypes = []any{
+var file_matching_matching_proto_msgTypes = make([]protoimpl.MessageInfo, 2)
+var file_matching_matching_proto_goTypes = []any{
 	(*MatchRequest)(nil),  // 0: matching.MatchRequest
 	(*MatchResponse)(nil), // 1: matching.MatchResponse
 }
-var file_proto_matching_matching_proto_depIdxs = []int32{
+var file_matching_matching_proto_depIdxs = []int32{
 	0, // 0: matching.Matcher.MatchUser:input_type -> matching.MatchRequest
 	1, // 1: matching.Matcher.MatchUser:output_type -> matching.MatchResponse
 	1, // [1:2] is the sub-list for method output_type
@@ -182,26 +182,26 @@ var file_proto_matching_matching_proto_depIdxs = []int32{
 	0, // [0:0] is the sub-list for field type_name
 }
 
-func init() { file_proto_matching_matching_proto_init() }
-func file_proto_matching_matching_proto_init() {
-	if File_proto_matching_matching_proto != nil {
+func init() { file_matching_matching_proto_init() }
+func file_matching_matching_proto_init() {
+	if File_matching_matching_proto != nil {
 		return
 	}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
-			RawDescriptor: unsafe.Slice(unsafe.StringData(file_proto_matching_matching_proto_rawDesc), len(file_proto_matching_matching_proto_rawDesc)),
+			RawDescriptor: unsafe.Slice(unsafe.StringData(file_matching_matching_proto_rawDesc), len(file_matching_matching_proto_rawDesc)),
 			NumEnums:      0,
 			NumMessages:   2,
 			NumExtensions: 0,
 			NumServices:   1,
 		},
-		GoTypes:           file_proto_matching_matching_proto_goTypes,
-		DependencyIndexes: file_proto_matching_matching_proto_depIdxs,
-		MessageInfos:      file_proto_matching_matching_proto_msgTypes,
+		GoTypes:           file_matching_matching_proto_goTypes,
+		DependencyIndexes: file_matching_matching_proto_depIdxs,
+		MessageInfos:      file_matching_matching_proto_msgTypes,
 	}.Build()
-	File_proto_matching_matching_proto = out.File
-	file_proto_matching_matching_proto_goTypes = nil
-	file_proto_matching_matching_proto_depIdxs = nil
+	File_matching_matching_proto = out.File
+	file_matching_matching_proto_goTypes = nil
+	file_matching_matching_proto_depIdxs = nil
 }

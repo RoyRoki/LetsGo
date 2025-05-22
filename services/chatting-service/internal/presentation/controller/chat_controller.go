@@ -58,23 +58,39 @@ func (c *ChatController) HandleWebSocket(w http.ResponseWriter, r *http.Request)
 			break
 		}
 
+		// Try to parse as ChatRequest (i.e., tags)
 		var chatReq models.ChatRequest
-		if err := json.Unmarshal(msgBytes, &chatReq); err != nil {
-			log.Printf("Invalid request from user %d: %v\n", userID, err)
+		if err := json.Unmarshal(msgBytes, &chatReq); err == nil && chatReq.Tags != nil {
+			user.Tags = chatReq.Tags
+			log.Printf("User %d tags: %v, module: %s", userID, user.Tags, user.Module)
+			go c.chatUsecase.HandleMatchRequest(user)
+			continue
+		}
+
+		// If it's not a tag-based message, assume it's a regular message to partner
+		var msg entity.Message
+		if err := json.Unmarshal(msgBytes, &msg); err != nil {
 			conn.WriteJSON(entity.Message{
 				From:    0,
-				Content: "Invalid request format.",
+				Content: "Invalid message format.",
 				Status:  constants.InvalidRequestFormat,
 			})
 			continue
 		}
 
-		// Store tags/module in the user entity
-		user.Tags = chatReq.Tags
+		partnerID := c.wsServer.GetPartnerID(userID)
+		if partnerID == 0 {
+			conn.WriteJSON(entity.Message{
+				From:    0,
+				Content: "No partner connected yet.",
+				Status:  constants.MatchNotFound,
+			})
+			continue
+		}
 
-		log.Printf("User %d tags: %v, module: %s", userID, user.Tags, user.Module)
-
-		// Handle matching logic
-		go c.chatUsecase.HandleMatchRequest(user)
+		// Forward message to partner
+		msg.From = userID
+		msg.Status = constants.PartnerMessage
+		c.wsServer.Send(partnerID, msg)
 	}
 }
