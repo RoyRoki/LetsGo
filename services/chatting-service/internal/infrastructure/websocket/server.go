@@ -1,9 +1,11 @@
 package websocket
 
 import (
+	"encoding/json"
 	"log"
 	"net/http"
 	"sync"
+	"time"
 
 	"github.com/gorilla/websocket"
 	"github.com/royroki/services/chatting-service/internal/constants"
@@ -12,13 +14,14 @@ import (
 )
 
 type WCServer struct {
-	clients   map[int32]*entity.User
-	paired    map[int32]int32
-	mu        sync.Mutex
-	sonyFlake *sonyflake.Sonyflake
+	clients    map[int32]*entity.User
+	paired     map[int32]int32
+	mu         sync.Mutex
+	sonyFlake  *sonyflake.Sonyflake
+	OnMessage  func(user *entity.User, tags []string, module string) // callback
 }
 
-// NewWCServer initializes the WebSocket server with Sonyflake for generating unique IDs
+
 func NewWCServer() *WCServer {
 	sf := sonyflake.NewSonyflake(sonyflake.Settings{})
 	if sf == nil {
@@ -31,41 +34,50 @@ func NewWCServer() *WCServer {
 	}
 }
 
-// Upgrade upgrades the HTTP connection to WebSocket and generates a unique user ID
+
 func (s *WCServer) Upgrade(w http.ResponseWriter, r *http.Request) (*websocket.Conn, int32, error) {
 	upgrader := websocket.Upgrader{
 		CheckOrigin: func(r *http.Request) bool {
-			// Allow all origins, but we should secure this in production
 			return true
 		},
 	}
-
 	conn, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
 		return nil, 0, err
 	}
 
-	// Generate a unique user ID using Sonyflake
 	id, err := s.sonyFlake.NextID()
 	if err != nil {
 		conn.Close()
 		return nil, 0, err
 	}
-
-	// Use only the lower 31 bits to ensure it's always a positive int32
 	safeID := int32(id & 0x7FFFFFFF)
-	return conn, safeID, nil
 
+	conn.SetReadDeadline(time.Now().Add(60 * time.Second))
+	conn.SetPongHandler(func(appData string) error {
+		conn.SetReadDeadline(time.Now().Add(60 * time.Second))
+		return nil
+	})
+
+	go func() {
+		ticker := time.NewTicker(30 * time.Second)
+		defer ticker.Stop()
+		for range ticker.C {
+			if err := conn.WriteMessage(websocket.PingMessage, nil); err != nil {
+				return
+			}
+		}
+	}()
+
+	return conn, safeID, nil
 }
 
-// Register adds a new user to the active clients map
 func (s *WCServer) Register(user *entity.User) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	s.clients[user.ID] = user
 }
 
-// IsActive checks if a user is still connected by looking up in the clients map
 func (s *WCServer) IsActive(userID int32) bool {
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -73,41 +85,35 @@ func (s *WCServer) IsActive(userID int32) bool {
 	return exists
 }
 
-// Get User Entity by Id
 func (s *WCServer) GetUser(userID int32) *entity.User {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	user := s.clients[userID]
-	return user
+	return s.clients[userID]
 }
 
-// Get Partner ID
 func (s *WCServer) GetPartnerID(userID int32) int32 {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-
-	partnerID, ok := s.paired[userID]
-	if !ok {
-		return 0
-	}
-	return partnerID
+	return s.paired[userID]
 }
 
-// Send sends a message to a specific user by user ID
-func (s *WCServer) Send(userID int32, message entity.Message) {
+func (s *WCServer) Send(userID int32, msg entity.Message) {
 	s.mu.Lock()
-	defer s.mu.Unlock()
-	if user, ok := s.clients[userID]; ok {
-		err := user.Conn.WriteJSON(message)
-		if err != nil {
-			log.Printf("Failed to send message to user %d: %v", userID, err)
-			user.Conn.Close()
-			delete(s.clients, userID)
+	user, ok := s.clients[userID]
+	s.mu.Unlock()
+	if !ok || user.Conn == nil {
+		log.Printf("Send failed: user %d not connected", userID)
+		return
+	}
+
+	if err := user.Conn.WriteJSON(msg); err != nil {
+		log.Printf("Send failed to user %d: %v. Retrying...", userID, err)
+		if err := user.Conn.WriteJSON(msg); err != nil {
+			log.Printf("Retry failed to user %d: %v", userID, err)
 		}
 	}
 }
 
-// Pair connects two users by updating the paired map
 func (s *WCServer) Pair(userA, userB int32) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -115,29 +121,62 @@ func (s *WCServer) Pair(userA, userB int32) {
 	s.paired[userB] = userA
 }
 
-// Unregister removes a user from the clients and paired maps
 func (s *WCServer) Unregister(userID int32) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	// Close the connection if it's still open
-	if user, ok := s.clients[userID]; ok {
-		_ = user.Conn.Close()
-		delete(s.clients, userID)
-	}
-
-	// Remove pairing if exists
 	if partnerID, ok := s.paired[userID]; ok {
 		delete(s.paired, userID)
 		delete(s.paired, partnerID)
-
-		// Optionally notify the partner
-		if partner, exists := s.clients[partnerID]; exists {
-			partner.Conn.WriteJSON(entity.Message{
+		if partner, exists := s.clients[partnerID]; exists && partner.Conn != nil {
+			_ = partner.Conn.WriteJSON(entity.Message{
 				From:    0,
 				Content: "Your partner has disconnected. Re-matching...",
 				Status:  constants.PartnerDisconnected,
 			})
 		}
 	}
+
+	if user, ok := s.clients[userID]; ok {
+		if user.Conn != nil {
+			_ = user.Conn.Close()
+		}
+		delete(s.clients, userID)
+	}
 }
+
+// HandleMessage reads, unmarshals, and processes a single WebSocket message
+func (s *WCServer) HandleMessage(user *entity.User, msgBytes []byte) {
+	var chatReq struct {
+		Tags   []string `json:"tags"`
+		Module string   `json:"module"`
+	}
+
+	if err := json.Unmarshal(msgBytes, &chatReq); err != nil {
+		log.Printf("Failed to unmarshal chat message from user %d: %v", user.ID, err)
+		return
+	}
+
+	if chatReq.Tags != nil {
+		s.mu.Lock()
+		tagSet := make(map[string]struct{})
+		for _, tag := range user.Tags {
+			tagSet[tag] = struct{}{}
+		}
+		for _, tag := range chatReq.Tags {
+			tagSet[tag] = struct{}{}
+		}
+
+		merged := make([]string, 0, len(tagSet))
+		for tag := range tagSet {
+			merged = append(merged, tag)
+		}
+		user.Tags = merged
+		user.Module = chatReq.Module
+		s.mu.Unlock()
+
+		log.Printf("User %d tags: %v, module: %s", user.ID, user.Tags, user.Module)
+		go s.OnMessage(user, user.Tags, user.Module)
+	}
+}
+	

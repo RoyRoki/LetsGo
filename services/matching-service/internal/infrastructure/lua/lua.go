@@ -4,7 +4,7 @@ import (
 	_ "embed"
 	"fmt"
 
-	"github.com/redis/go-redis/v9"
+	redis "github.com/redis/go-redis/v9"                      // add alias for clarity
 	"github.com/royroki/letsgo/services/matching-service/internal/domain"
 	Redis "github.com/royroki/letsgo/services/matching-service/internal/infrastructure/redis"
 )
@@ -21,8 +21,8 @@ func MatchUser(req domain.MatchRequest) (domain.MatchResult, error) {
 		keys[i] = fmt.Sprintf("waiting:%s:%s", req.Module, tag)
 	}
 
-	// Cap scan to 4294 million or 2 `32` userIDs
-	const maxScan = 4294_97_000
+	// Cap scan to 4.29 billion (max 32-bit userID)
+	const maxScan = 4294970000
 
 	// Run Lua script
 	res, err := matchUserRedisScript.Run(Redis.Ctx, Redis.Rdb, keys, req.UserID, maxScan).Int()

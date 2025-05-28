@@ -5,16 +5,16 @@ import (
 
 	"github.com/royroki/services/chatting-service/internal/constants"
 	"github.com/royroki/services/chatting-service/internal/domain/entity"
+	"github.com/royroki/services/chatting-service/internal/domain/repo"
 	grpcclient "github.com/royroki/services/chatting-service/internal/infrastructure/grpc"
-	"github.com/royroki/services/chatting-service/internal/infrastructure/websocket"
 )
 
 type ChatUsecase struct {
-	wsServer      *websocket.WCServer
+	wsServer      repo.ChatGateway
 	matcherClient *grpcclient.MatcherClient
 }
 
-func NewChatUsecase(ws *websocket.WCServer, matcher *grpcclient.MatcherClient) *ChatUsecase {
+func NewChatUsecase(ws repo.ChatGateway, matcher *grpcclient.MatcherClient) *ChatUsecase {
 	return &ChatUsecase{
 		wsServer:      ws,
 		matcherClient: matcher,
@@ -23,6 +23,7 @@ func NewChatUsecase(ws *websocket.WCServer, matcher *grpcclient.MatcherClient) *
 
 // HandleMatchRequest processes user's tags and attempts to find a match
 func (cu *ChatUsecase) HandleMatchRequest(user *entity.User) {
+tryMatch:
 	partnerID, matched, err := cu.matcherClient.Match(user.ID, user.Module, user.Tags)
 	if err != nil {
 		log.Printf("gRPC matching error for user %d: %v", user.ID, err)
@@ -43,17 +44,30 @@ func (cu *ChatUsecase) HandleMatchRequest(user *entity.User) {
 		return
 	}
 
-	// Check if partner is still active
+	// Check if partner is active
 	if !cu.wsServer.IsActive(partnerID) {
 		log.Printf("Partner %d is inactive, re-matching...", partnerID)
-		// Optionally call Match again or notify user
-		cu.HandleMatchRequest(user)
+		goto tryMatch
+	}
+
+	// Check if partner is already paired with someone else
+	if cu.wsServer.GetPartnerID(partnerID) != 0 {
+		log.Printf("Partner %d is already paired, re-matching...", partnerID)
+		goto tryMatch
+	}
+
+	// Check if user itself is already paired (optional safety check)
+	if cu.wsServer.GetPartnerID(user.ID) != 0 {
+		log.Printf("User %d is already paired, skipping match request", user.ID)
 		return
 	}
 
-	// Send success message to both
+	// Pair users
 	cu.wsServer.Pair(user.ID, partnerID)
 
+	log.Printf("Matched users: %d <--> %d with tags: %v\n", user.ID, partnerID, user.Tags)
+
+	// Notify both users
 	cu.wsServer.Send(user.ID, entity.Message{
 		From:    0,
 		Content: "Connected to a partner!",
@@ -66,6 +80,7 @@ func (cu *ChatUsecase) HandleMatchRequest(user *entity.User) {
 		Status:  constants.MatchFound,
 	})
 }
+
 
 // HandleDisconnect cleans up and notifies partner
 func (cu *ChatUsecase) HandleDisconnect(userID int32) {

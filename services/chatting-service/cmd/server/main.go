@@ -7,6 +7,7 @@ import (
 
 	"github.com/royroki/services/chatting-service/internal/app/usecases"
 	"github.com/royroki/services/chatting-service/internal/constants"
+	"github.com/royroki/services/chatting-service/internal/domain/entity"
 	grpcclient "github.com/royroki/services/chatting-service/internal/infrastructure/grpc"
 	"github.com/royroki/services/chatting-service/internal/infrastructure/redis"
 	"github.com/royroki/services/chatting-service/internal/infrastructure/websocket"
@@ -31,11 +32,17 @@ func main() {
 
 	// Initialize gRPC matcher client
 	matcherClient := grpcclient.NewMatcherClient(grpcTarget)
-	// Init WebSocket server
-	wsServer := websocket.NewWCServer()
+// Init WebSocket server
+wsServer := websocket.NewWCServer()
 
-	// Init Usecase
-	chatUsecase := usecases.NewChatUsecase(wsServer, matcherClient)
+// Init Usecase with WebSocket server as interface
+chatUsecase := usecases.NewChatUsecase(wsServer, matcherClient)
+
+// Set callback
+wsServer.OnMessage = func(user *entity.User, tags []string, module string) {
+	go chatUsecase.HandleMatchRequest(user)
+}
+
 
 	// Init chat controller
 	chatController := controller.NewChatController(wsServer, chatUsecase)

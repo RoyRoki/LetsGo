@@ -4,6 +4,7 @@ import (
 	"context"
 	"log"
 	"os"
+	"strconv"
 
 	"github.com/redis/go-redis/v9"
 	"github.com/royroki/letsgo/services/matching-service/internal/constants"
@@ -31,4 +32,35 @@ func InitRedis() {
 	}
 
 	log.Printf("✅ Redis connected: %s", redisAddr)
+}
+
+func GetOrCreateIndex(userID string) (int64, error) {
+	indexStr, err := Rdb.HGet(Ctx, "user:index", userID).Result()
+	if err == redis.Nil {
+		// Doesn't exist, create new index
+		index, err := Rdb.Incr(Ctx, "user:index:counter").Result()
+		if err != nil {
+			return 0, err
+		}
+
+		pipe := Rdb.TxPipeline()
+		pipe.HSet(Ctx, "user:index", userID, index)
+		pipe.HSet(Ctx, "index:user", index, userID)
+		_, err = pipe.Exec(Ctx)
+		if err != nil {
+			return 0, err
+		}
+
+		return index, nil
+	} else if err != nil {
+		return 0, err
+	}
+
+	// Convert index string to int64
+	index, err := strconv.ParseInt(indexStr, 10, 64)
+	if err != nil {
+		return 0, err
+	}
+
+	return index, nil
 }

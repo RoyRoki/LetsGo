@@ -11,7 +11,7 @@
 
     <label for="tags">Enter tags (comma-separated):</label>
     <input type="text" id="tags" placeholder="e.g. gaming,music" />
-    <button onclick="connect()">Connect & Match</button>
+    <button onclick="setTags()">Set Tags & Match</button>
 
     <div style="margin-top: 20px;">
         <div id="chatBox"
@@ -26,40 +26,37 @@
     <script>
         let socket;
         let tagPayload = null;
+        let readyToSendTags = false;
 
-        function connect() {
-            const tagsInput = document.getElementById("tags").value;
-            const tags = tagsInput
-                .split(",")
-                .map(tag => tag.trim())
-                .filter(tag => tag.length > 0);
-
-            tagPayload = { tags };
-
+        // Connect to server immediately on page load
+        window.onload = () => {
             socket = new WebSocket("ws://localhost:8080/ws/chat");
 
             socket.onopen = () => {
-                log("✅ Connected to WebSocket.");
-                if (tagPayload) {
-                    log("📤 Sending tags: " + JSON.stringify(tagPayload));
-                    socket.send(JSON.stringify(tagPayload));
-                }
+                log("✅ Connected to WebSocket. Waiting for server readiness...");
             };
 
             socket.onmessage = (event) => {
                 try {
                     const data = JSON.parse(event.data);
-                    log(JSON.stringify(data))
+                    log(JSON.stringify(data));
 
                     switch (data.status) {
+                        case "902":
+                            log("✅ Server is ready for tags.");
+                            if (tagPayload) {
+                                socket.send(JSON.stringify(tagPayload));
+                                log("📤 Tags sent: " + JSON.stringify(tagPayload));
+                            } else {
+                                readyToSendTags = true;
+                                log("⚠️ Tags not set yet. Waiting for user input...");
+                            }
+                            break;
                         case "904":
                             displayMessage("🗨️ Partner: " + data.content);
                             break;
                         case "905":
                             displayMessage("⚙️ System: " + data.content);
-                            break;
-                        case "902":
-                            log("✅ " + data.content);
                             break;
                         default:
                             log("ℹ️ [" + (data.status || "") + "] " + data.content);
@@ -78,6 +75,23 @@
             socket.onclose = () => {
                 log("🔌 Connection closed.");
             };
+        };
+
+        function setTags() {
+            const tagsInput = document.getElementById("tags").value;
+            const tags = tagsInput
+                .split(",")
+                .map(tag => tag.trim())
+                .filter(tag => tag.length > 0);
+
+            tagPayload = { tags };
+
+            if (socket && socket.readyState === WebSocket.OPEN && readyToSendTags) {
+                socket.send(JSON.stringify(tagPayload));
+                log("📤 Tags sent: " + JSON.stringify(tagPayload));
+            } else {
+                log("⏳ Tags saved. Will send once server is ready...");
+            }
         }
 
         function sendMessage() {

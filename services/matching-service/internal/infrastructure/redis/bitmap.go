@@ -11,9 +11,15 @@ func getKey(module, tag string) string {
 }
 
 func AddUserToTags(req domain.MatchRequest) error {
+	// Get or create the internal index for the user
+	index, err := GetOrCreateIndex(fmt.Sprintf("%d", req.UserID))
+	if err != nil {
+		return err
+	}
+
 	for _, tag := range req.Tags {
 		key := getKey(req.Module, tag)
-		err := Rdb.SetBit(Ctx, key, int64(req.UserID), 1).Err()
+		err := Rdb.SetBit(Ctx, key, index, 1).Err()
 		if err != nil {
 			return err
 		}

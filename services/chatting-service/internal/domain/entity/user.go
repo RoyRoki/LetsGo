@@ -8,4 +8,6 @@ type User struct {
 	IP     string
 	Tags   []string
 	Module string
+	InMatching bool
+	Matched    bool
 }
